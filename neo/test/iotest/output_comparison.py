@@ -39,6 +39,7 @@ dirname = '/home/arbeit/Downloads/files_for_testing_neo/blackrock/FileSpec2.3001
 oldbrio_reader = None
 newbrio_reader = None
 
+
 def old_brio_load():
     # ioclass = old_brio
     # files_to_test = ['FileSpec2.3001']
@@ -64,9 +65,6 @@ def new_brio_load():
     return new_block
 
 
-
-
-
 class outputComparison():
     # old_block = None
     # new_block = None
@@ -86,10 +84,6 @@ class outputComparison():
             objects1 = block1.list_children_by_class(objtype)
             objects2 = block2.list_children_by_class(objtype)
             if len(objects1) != len(objects2):
-                # warnings.warn('Number of {} is different in both blocks ({} != {'
-                #               '}).'.format(objtype,
-                #                             len(objects1),
-                #                             len(objects2)))
                 print('Number of ', objtype, ' is different in the blocks: ', len(objects1), ' != ', len(objects2))
             # index = 0
             # Loop through Objects and compare them, even if not same number, to find which objects are the same
@@ -108,6 +102,43 @@ class outputComparison():
 
 
 def compare_annotations(annos1, annos2):
+    if len(annos1) != len(annos2) or annos1.keys != annos2.keys:
+        print('Annotations are not the same! Keys ', annos1.keys(), ' != ', annos2.keys())
+        common_keys = []
+        uncommon_keys1 = []
+        uncommon_keys2 = []
+        for key in annos1.keys():   # Save common keys in list, print if not in common
+            if key in annos2.keys():
+                common_keys.append(key)
+            else:
+                print('This key from the 1. (old) version does not exist in 2. (new) version: ', key)
+                uncommon_keys1.append(key)
+        for key in annos2.keys():
+            if key not in common_keys:
+                print('This key from the 2. (new) version does not exist in 1. (old) version: ', key)
+                uncommon_keys2.append(key)
+
+        for key in common_keys:  # Compare values for common keys
+            if annos1[key] != annos2[key]:
+                print('Values of annotations differ for key', key, ': ', annos1[key], ' != ', annos2[key])
+        # Loop through not common keys and try to find corresponding value anywhere in other version
+        for key1 in uncommon_keys1:
+            for key2 in annos2.keys():
+                if annos1[key1] == annos2[key2]:
+                    print('Value of ', key1, ' in 1. (old) version can be found in 2. (new) version with key ', key2)
+        for key2 in uncommon_keys2:
+            for key1 in annos1.keys():
+                if annos1[key1] == annos2[key2]:
+                    print('Value of ', key2, ' in 2. (new) version can be found in 1. (old) version with key ', key1)
+    else:
+        if annos1.keys() == annos2.keys():
+            difference_found = False
+            for key in annos1.keys():
+                if annos1[key] != annos2[key]:
+                    print('Values of annotations differ for key', key, ': ', annos1[key], ' != ', annos2[key])
+                    difference_found = True
+            if not difference_found:
+                print('Annotations are the same')
 
     print()
 
