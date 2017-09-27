@@ -69,7 +69,7 @@ def old_brio_load():
     oldbrio_reader = old_brio(dirname)
     old_block = oldbrio_reader.read_block(
         # n_starts=[None], n_stops=None,
-        channels={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 129, 130},
+        channels={1, 2, 3, 4, 5, 6, 7, 8, 129, 130},
         nsx_to_load=5,
         units='all',
         load_events=True,
@@ -91,6 +91,8 @@ def new_brio_load():
 def output(block):
     for seg in block.segments:
         print('seg', seg.index)
+        for epoch in seg.epochs:
+            print("FOUND EPOCH")
         for anasig in seg.analogsignals:
             print(' AnalogSignal', anasig.name, anasig.shape, anasig.t_start, anasig.sampling_rate)
             print('ChannelIndex', anasig.annotations['channel_id'])
@@ -180,10 +182,15 @@ def print_annotations_all(
             print('Value: ', obj.annotations[key])
         print('*' * 20)
 
+def print_annotations_of_object(obj):
+    for key in obj.annotations.keys():
+        print('Key: ', key)
+        print('Value: ', obj.annotations[key])
+    print('*' * 20)
 
 def print_attributes_of_object(object):
     attribs = object._all_attrs
-    #print(attribs)
+    # print(attribs)
     for attrib in attribs:
         if attrib[0] is not 'signal':
             print(attrib[0], ': ', object.__getattribute__(attrib[0]))
@@ -198,20 +205,139 @@ def print_attributes_of_all_objects(block, objtype):
     index = 0
     for object in objects:
         print('                                       *****Number: ', index)
-        print_attributes_of_object(object)
+        # print_attributes_of_object(object)
         index = index + 1
+        print('ANASIG FROM CHANIND: ', object.analogsignals[0][object.index[0]])
+    print_attributes_of_object(block)
 
 
 def child_objects(block, objtype):
     return block.list_children_by_class(objtype)
 
 
+def chanind_anasig_relation(block):  # GOOD
+    chaninds = block.list_children_by_class(ChannelIndex)
+    for chanind in chaninds:
+        print(chanind.name)
+        anasigs = chanind.analogsignals
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.channel_index.name)
+        units = chanind.units
+        for unit in units:
+            print(unit.name)
+        print('*' * 10)
+
+
+def chanind_unit_relation(block):  # GOOD
+    chaninds = block.list_children_by_class(ChannelIndex)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.units
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.channel_index)
+        units = chanind.units
+
+        print('*' * 10)
+
+
+def unit_st_relation(block):
+    chaninds = block.list_children_by_class(Unit)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.spiketrains
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.unit)
+        print('*' * 10)
+
+
+def st_unit_relation(block):
+    chaninds = block.list_children_by_class(SpikeTrain)
+    for chanind in chaninds:
+        print(chanind)
+        anasig = chanind.unit
+        try:
+            print(anasig.name, 'ChannelIndex: ', anasig.spiketrains)
+        except:
+            print("No Unit linked to this SpikeTrain")
+        print('*' * 10)
+
+
+def segment_anasig_relation(block):
+    chaninds = block.list_children_by_class(Segment)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.analogsignals
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.segment)
+        print('*'*10)
+
+def segment_st_relation(block):
+    chaninds = block.list_children_by_class(Segment)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.spiketrains
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.segment)
+        print('*'*10)
+
+def segment_epoch_relation(block):
+    chaninds = block.list_children_by_class(Segment)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.epochs
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.segment)
+        print('*'*10)
+
+def segment_event_relation(block):
+    chaninds = block.list_children_by_class(Segment)
+    for chanind in chaninds:
+        print(chanind)
+        anasigs = chanind.events
+        for anasig in anasigs:
+            print(anasig.name, 'ChannelIndex: ', anasig.segment)
+        print('*'*10)
+
+def block_chanind_relation(block):
+    print(block)
+    anasigs = block.channel_indexes
+    for anasig in anasigs:
+        print(anasig.name, 'ChannelIndex: ', anasig.block)
+    print('*'*10)
+
+def block_segment_relation(block):
+    print(block)
+    anasigs = block.segments
+    for anasig in anasigs:
+        print(anasig.name, 'ChannelIndex: ', anasig.block)
+    print('*'*10)
+
+
+def compare_array_content(rescale_factor, array1, array2):
+    array1 = (array1 / rescale_factor).magnitude
+    array2 = array2.magnitude
+    print(array1, array2)
+    if np.allclose(array1, array2, atol=0.000000000000000001):
+        print('Good')
+    else:
+        print('Failed')
+
+
+def compare_object_content(old_block, new_block, objtype):
+    objolds = old_block.list_children_by_class(objtype)
+    objnews = new_block.list_children_by_class(objtype)
+    for objold, objnew in zip(objolds, objnews):
+        oldarray = objold.times  # specific for SpikeTrain and Event
+        newarray = objnew[:]  # specific for AnaSig
+        compare_array_content(oldarray[0] / newarray[0], oldarray, newarray)
+
+
 def run_test():
     old_block = old_brio_load()
-    output(old_block)
+    # output(old_block)
     new_block = new_brio_load()
-    #output(new_block)
-    #compare_neo_content(old_block, new_block)
+    # output(new_block)
+    # compare_neo_content(old_block, new_block)
     # print('OLD IO')
     # print_annotations_id(old_block, 'SpikeTrain')
     # print('NEW IO')
@@ -219,8 +345,26 @@ def run_test():
     # chan_ind = child_objects(old_block, ChannelIndex)
     # print('NEW Event Annotations')
     # print_annotations_all(new_block, Event)
-    #print('NEW Epoch Attributes')        # NEED TO DO THIS FOR AAAAALLLLLL OBJECT TYPES!!!!!!!!!!!!!! Unit SpikeTrain Event Epoch
-    #print_attributes_of_all_objects(old_block, AnalogSignal)    # #Signal cannot be found in AnaSig, for old and new
+    # print('NEW Epoch Attributes')        # NEED TO DO THIS FOR AAAAALLLLLL OBJECT TYPES!!!!!!!!!!!!!! Unit SpikeTrain Event Epoch
+    # print_attributes_of_all_objects(old_block, ChannelIndex)
+    # print_attributes_of_all_objects(new_block, ChannelIndex)
+    # chanind_anasig_relation(new_block)
+    # chanind_unit_relation(new_block)
+    #unit_st_relation(new_block)
+    #st_unit_relation(old_block)
+    # segment_anasig_relation(old_block)
+    # segment_st_relation(new_block)
+    #segment_event_relation(new_block)
+    #block_segment_relation(new_block)
+    # compare_object_content(old_block, new_block, AnalogSignal)
+    #print_annotations_id(new_block, Unit)
+    #print_annotations_id()
+    #print_attributes_of_object(new_block)
+    #print_attributes_of_object(old_block)
+    #print_annotations_of_object(new_block)
+    print_annotations_of_object(old_block)
+    anasig = new_block.list_children_by_class(AnalogSignal)[2]
+    print anasig.shape
 
 
 run_test()
