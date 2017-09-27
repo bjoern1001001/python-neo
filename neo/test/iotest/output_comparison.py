@@ -139,12 +139,22 @@ def compare_annotations(annos1, annos2):
                     difference_found = True
             if not difference_found:
                 print('Annotations are the same')
+    print('*'*10)
 
-    print()
 
-
-def compare_attributes(obj1, obj2):
-    print()
+def compare_attributes(obj1, obj2):     # Is this enough? Or can values of attribute be in attribute with different name?
+    possible_attrs = obj1._all_attrs
+    assert possible_attrs == obj2._all_attrs
+    difference_found = False
+    for attr in possible_attrs:
+        if attr[0] in ['signal', 'times', 'waveforms', 'labels']:
+            print('Arrays are skipped here')
+        elif not obj1.__getattribute__(attr[0]) == obj2.__getattribute__(attr[0]):
+            difference_found = True
+            print('Attribute values of ', attr, 'are not the same: ',
+                  obj1.__getattribute__(attr[0]), ' != ', obj2.__getattribute__(attr[0]))
+    if not difference_found:
+        print('Attributes are the same')
 
 
 def compare_arrays(obj1, obj2):
