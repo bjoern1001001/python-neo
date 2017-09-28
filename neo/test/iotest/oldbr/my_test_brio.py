@@ -73,7 +73,8 @@ def old_brio_load():
         nsx_to_load=5,
         units='all',
         load_events=True,
-        load_waveforms=True)
+        load_waveforms=True,
+        scaling='voltage')
     # output(old_block)
     print 'Loading old IO done'
     return old_block
@@ -207,8 +208,8 @@ def print_attributes_of_all_objects(block, objtype):
         print('                                       *****Number: ', index)
         # print_attributes_of_object(object)
         index = index + 1
-        print('ANASIG FROM CHANIND: ', object.analogsignals[0][object.index[0]])
-    print_attributes_of_object(block)
+        # print('ANASIG FROM CHANIND: ', object.analogsignals[0][object.index[0]])
+        print_attributes_of_object(object)
 
 
 def child_objects(block, objtype):
@@ -346,8 +347,8 @@ def run_test():
     # print('NEW Event Annotations')
     # print_annotations_all(new_block, Event)
     # print('NEW Epoch Attributes')        # NEED TO DO THIS FOR AAAAALLLLLL OBJECT TYPES!!!!!!!!!!!!!! Unit SpikeTrain Event Epoch
-    # print_attributes_of_all_objects(old_block, ChannelIndex)
-    # print_attributes_of_all_objects(new_block, ChannelIndex)
+    print_attributes_of_all_objects(old_block, AnalogSignal)
+    #print_attributes_of_all_objects(new_block, SpikeTrain)
     # chanind_anasig_relation(new_block)
     # chanind_unit_relation(new_block)
     #unit_st_relation(new_block)
@@ -362,9 +363,9 @@ def run_test():
     #print_attributes_of_object(new_block)
     #print_attributes_of_object(old_block)
     #print_annotations_of_object(new_block)
-    print_annotations_of_object(old_block)
-    anasig = new_block.list_children_by_class(AnalogSignal)[2]
-    print anasig.shape
+    #print_annotations_of_object(old_block)
+    #anasig = new_block.list_children_by_class(AnalogSignal)[2]
+    #print anasig.shape
 
 
 run_test()
