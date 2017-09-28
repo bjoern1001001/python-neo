@@ -6,13 +6,11 @@ except ImportError:
     import unittest
 
 from numpy.testing import assert_equal
-import numpy as np
 import quantities as pq
 from neo.io.blackrockio import BlackrockIO
 from neo.io.blackrockio_v4 import BlackrockIO as old_brio
 import warnings
 import numpy as np
-import quantities as pq
 from neo.core import *
 from neo import AnalogSignal
 import time
@@ -79,6 +77,8 @@ class outputComparison():
     def compare(block1, block2):
         object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'AnalogSignal',
                                 'SpikeTrain', 'Event', 'Epoch']
+        print('Testing {}'.format('Block'))
+        compare_objects(block1, block2, 'Block')
         for objtype in object_types_to_test:
             print('Testing {}'.format(objtype))
             objects1 = block1.list_children_by_class(objtype)
@@ -90,16 +90,19 @@ class outputComparison():
             for obj1, obj2 in izip_longest(objects1, objects2, fillvalue=None):
                 # index += 1
                 if obj1 is not None and obj2 is not None:
-                    compare_annotations(obj1.annotations, obj2.annotations)
-                    compare_attributes(obj1, obj2)
-                    if objtype in [Event, AnalogSignal, SpikeTrain]:
-                        compare_arrays(obj1, obj2, objtype)
-                    compare_links(obj1, obj2, objtype)
+                    compare_objects(obj1, obj2, objtype)
                 elif obj1 is None:
                     print('Additional object in 2. (new) version: ', obj2.name)
                 elif obj2 is None:
                     print('Additional object in 1. (old) version: ', obj1.name)
 
+
+def compare_objects(obj1, obj2, objtype):
+    compare_annotations(obj1.annotations, obj2.annotations)
+    compare_attributes(obj1, obj2)
+    if objtype in [Event, AnalogSignal, SpikeTrain]:
+        compare_arrays(obj1, obj2, objtype)
+    compare_links(obj1, obj2, objtype)
 
 def compare_annotations(annos1, annos2):
     if len(annos1) != len(annos2) or annos1.keys != annos2.keys:
@@ -263,7 +266,6 @@ def compare_links(obj1, obj2, objtype):
                 a -= 1
             elif b == len(all_links2) and a < len(all_links1):
                 b -= 1
-
 
 
 # def output(block):
