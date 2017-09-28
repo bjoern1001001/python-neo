@@ -92,8 +92,8 @@ class outputComparison():
                 if obj1 is not None and obj2 is not None:
                     compare_annotations(obj1.annotations, obj2.annotations)
                     compare_attributes(obj1, obj2)
-                    if objtype == Event:
-                        compare_arrays(obj1, obj2)
+                    if objtype in [Event, AnalogSignal, SpikeTrain]:
+                        compare_arrays(obj1, obj2, objtype)
                     compare_links(obj1, obj2)
                 elif obj1 is None:
                     print('Additional object in 2. (new) version: ', obj2.name)
@@ -157,8 +157,63 @@ def compare_attributes(obj1, obj2):     # Is this enough? Or can values of attri
         print('Attributes are the same')
 
 
-def compare_arrays(obj1, obj2):
-    print()
+def compare_arrays(obj1, obj2, objtype):
+    rescale_factor = 1
+    difference_found = False
+    arr1 = []
+    arr2 = []
+    if objtype == AnalogSignal:
+        arr1 = obj1[:].magnitude
+        arr2 = obj2[:].magnitude
+        rescale_factor = arr2[0]/arr1[0]
+        difference_found = compare_arr(arr1, arr2, rescale_factor)
+    elif objtype == SpikeTrain:
+        arr1 = obj1.times[:].magnitude
+        arr2 = obj2.times[:].magnitude
+        rescale_factor = arr2[0]/arr1[0]
+        difference_found = compare_arr(arr1, arr2, rescale_factor)
+        arr1 = obj1.waveforms[:].magnitude
+        arr2 = obj2.waveforms[:].magnitude
+        rescale_factor = arr2[0]/arr1[0]
+        if compare_arr(arr1, arr2, rescale_factor):
+            difference_found = False
+    elif objtype == Event:
+        arr1 = obj1.times[:].magnitude
+        arr2 = obj2.times[:].magnitude
+        rescale_factor = arr2/arr1[0]
+        difference_found = compare_arr(arr1, arr2, rescale_factor)
+        arr1 = obj1.labels[:]
+        arr2 = obj2.labels[:]
+        rescale_factor = 1
+        if compare_arr(arr1, arr2, rescale_factor):
+            difference_found = False
+    if not difference_found:
+        rescale_factor_used = rescale_factor
+        if isinstance(rescale_factor, np.ndarray) and len(rescale_factor) > 1:
+            rescale_factor_used = rescale_factor[0]
+        print('Array values are similar. Values in array of 2. (new) version are ', rescale_factor_used,
+              ' times as high as in 1. (old) version')
+
+
+def compare_arr(array1, array2, rescale_factor):    # Implement percentages of equality
+    if not isinstance(rescale_factor, np.ndarray) and rescale_factor != 1:
+        array2 /= rescale_factor
+    elif isinstance(rescale_factor, np.ndarray) and len(rescale_factor > 0):
+        array2 /= rescale_factor[0]
+    # difference_found = False
+    if len(array1) != len(array2):
+        print('Different length of Arrays!!')
+        return True
+    else:
+        print('Length is the same, testing for equality: ')
+        if (array1 != array2).any():
+            return False
+        # for a, b in zip(array1, array2):
+        #     if (a != b).any():
+        #         difference_found = True
+        # if difference_found:
+        #     print('Values are not the same even after rescaling')
+        # return difference_found
 
 
 def compare_links(obj1, obj2):
