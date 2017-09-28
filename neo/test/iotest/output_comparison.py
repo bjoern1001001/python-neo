@@ -77,10 +77,10 @@ class outputComparison():
     def compare(block1, block2):
         object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'AnalogSignal',
                                 'SpikeTrain', 'Event', 'Epoch']
-        print('Testing {}'.format('Block'))
+        print('*'*30, 'Testing {}'.format('Block'))
         compare_objects(block1, block2, 'Block')
         for objtype in object_types_to_test:
-            print('Testing {}'.format(objtype))
+            print('*'*30, 'Testing {}'.format(objtype))
             objects1 = block1.list_children_by_class(objtype)
             objects2 = block2.list_children_by_class(objtype)
             if len(objects1) != len(objects2):
@@ -100,9 +100,10 @@ class outputComparison():
 def compare_objects(obj1, obj2, objtype):
     compare_annotations(obj1.annotations, obj2.annotations)
     compare_attributes(obj1, obj2)
-    if objtype in [Event, AnalogSignal, SpikeTrain]:
+    if objtype in ['Event', 'AnalogSignal', 'SpikeTrain']:
         compare_arrays(obj1, obj2, objtype)
     compare_links(obj1, obj2, objtype)
+
 
 def compare_annotations(annos1, annos2):
     if len(annos1) != len(annos2) or annos1.keys != annos2.keys:
@@ -165,24 +166,32 @@ def compare_arrays(obj1, obj2, objtype):
     difference_found = False
     arr1 = []
     arr2 = []
-    if objtype == AnalogSignal:
+    if objtype == 'AnalogSignal':
         arr1 = obj1[:].magnitude
         arr2 = obj2[:].magnitude
+        if obj1.units != obj2.units:
+            print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0]/arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
-    elif objtype == SpikeTrain:
+    elif objtype == 'SpikeTrain':
         arr1 = obj1.times[:].magnitude
         arr2 = obj2.times[:].magnitude
+        if obj1.units != obj2.units:
+            print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0]/arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
         arr1 = obj1.waveforms[:].magnitude
         arr2 = obj2.waveforms[:].magnitude
+        if obj1.units != obj2.units:
+            print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0]/arr1[0]
         if compare_arr(arr1, arr2, rescale_factor):
             difference_found = False
-    elif objtype == Event:
+    elif objtype == 'Event':
         arr1 = obj1.times[:].magnitude
         arr2 = obj2.times[:].magnitude
+        if obj1.units != obj2.units:
+            print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2/arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
         arr1 = obj1.labels[:]
