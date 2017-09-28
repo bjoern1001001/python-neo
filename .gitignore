@@ -62,3 +62,7 @@ Thumbs.db
 ###################################
 neo/test/io/neurosharemergeio.py
 files_for_testing_neo
+neo/io/oldbr/
+neo/test/iotest/oldbr/new_blackrockio_test.py
+neo/test/iotest/oldbr/test_blackrockio.py
+
