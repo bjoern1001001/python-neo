@@ -77,8 +77,8 @@ class outputComparison():
 
     @staticmethod
     def compare(block1, block2):
-        object_types_to_test = [Segment, ChannelIndex, Unit, AnalogSignal,
-                                SpikeTrain, Event, Epoch]
+        object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'AnalogSignal',
+                                'SpikeTrain', 'Event', 'Epoch']
         for objtype in object_types_to_test:
             print('Testing {}'.format(objtype))
             objects1 = block1.list_children_by_class(objtype)
@@ -94,7 +94,7 @@ class outputComparison():
                     compare_attributes(obj1, obj2)
                     if objtype in [Event, AnalogSignal, SpikeTrain]:
                         compare_arrays(obj1, obj2, objtype)
-                    compare_links(obj1, obj2)
+                    compare_links(obj1, obj2, objtype)
                 elif obj1 is None:
                     print('Additional object in 2. (new) version: ', obj2.name)
                 elif obj2 is None:
@@ -216,8 +216,54 @@ def compare_arr(array1, array2, rescale_factor):    # Implement percentages of e
         # return difference_found
 
 
-def compare_links(obj1, obj2):
-    print()
+def compare_links(obj1, obj2, objtype):
+    objtype = str(objtype)
+    all_links1 = []
+    all_links2 = []
+    links_to_check = dict(Block=['channel_indexes', 'segments'], ChannelIndex=['analogsignals', 'units', 'block'],
+                          Unit=['spiketrains', 'channel_index'], AnalogSignal=['channel_index', 'segment'],
+                          SpikeTrain=['unit', 'segment'],
+                          Segment=['block', 'events', 'epochs', 'spiketrains', 'analogsignals'],
+                          Event=['segment'], Epoch=['segment'])
+    for link in links_to_check[objtype]:
+        if isinstance(obj1.__getattribute__(link), np.ndarray) or isinstance(obj2.__getattribute__(link), list):
+            for a in obj1.__getattribute__(link):
+                all_links1.append(link)
+        elif obj1.__getattribute__(link) is not None:
+            all_links1.append(link)
+    for link in links_to_check[objtype]:
+        if isinstance(obj2.__getattribute__(link), np.ndarray) or isinstance(obj2.__getattribute__(link), list):
+            for a in obj2.__getattribute__(link):
+                all_links2.append(link)
+        elif obj2.__getattribute__(link) is not None:
+            all_links2.append(link)
+    # Actual comparison comes here
+    if all_links1 == all_links2:
+        print('Links of this ', objtype, 'object are the same as before')
+        # Does not cover the case that objects have changed, eg. St is linked to Unit1 instead of Unit2
+        return
+    else:
+        if len(all_links1)!=len(all_links2):
+            print('Different number of links to other objects for this ', objtype)
+        a = 0
+        b = 0
+        while a<len(all_links1) and b < len(all_links2):
+            if all_links1[a] == all_links2[b]:
+                a += 1
+                b += 1
+                continue
+            else:
+                if links_to_check[objtype].index(all_links1[a]) < links_to_check[objtype].index(all_links2[b]):
+                    print('2. (new) version does not have as many links to ', link, 's as 1. (old) version')
+                    a += 1
+                else:
+                    print('2. (new) version has more links to ', objtype, 's than 1. (old) version')
+                    b += 1
+            if a == len(all_links1) and b < len(all_links2):
+                a -= 1
+            elif b == len(all_links2) and a < len(all_links1):
+                b -= 1
+
 
 
 # def output(block):
