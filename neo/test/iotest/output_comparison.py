@@ -63,7 +63,7 @@ def new_brio_load():
     return new_block
 
 
-class outputComparison():
+class OutputComparison():
     # old_block = None
     # new_block = None
 
@@ -77,10 +77,10 @@ class outputComparison():
     def compare(block1, block2):
         object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'AnalogSignal',
                                 'SpikeTrain', 'Event', 'Epoch']
-        print('*'*30, 'Testing {}'.format('Block'))
+        print('*' * 30, 'Testing {}'.format('Block'))
         compare_objects(block1, block2, 'Block')
         for objtype in object_types_to_test:
-            print('*'*30, 'Testing {}'.format(objtype))
+            print('*' * 30, 'Testing {}'.format(objtype))
             objects1 = block1.list_children_by_class(objtype)
             objects2 = block2.list_children_by_class(objtype)
             if len(objects1) != len(objects2):
@@ -111,7 +111,7 @@ def compare_annotations(annos1, annos2):
         common_keys = []
         uncommon_keys1 = []
         uncommon_keys2 = []
-        for key in annos1.keys():   # Save common keys in list, print if not in common
+        for key in annos1.keys():  # Save common keys in list, print if not in common
             if key in annos2.keys():
                 common_keys.append(key)
             else:
@@ -143,10 +143,10 @@ def compare_annotations(annos1, annos2):
                     difference_found = True
             if not difference_found:
                 print('Annotations are the same')
-    print('*'*10)
+    print('*' * 10)
 
 
-def compare_attributes(obj1, obj2):     # Is this enough? Or can values of attribute be in attribute with different name?
+def compare_attributes(obj1, obj2):  # Is this enough? Or can values of attribute be in attribute with different name?
     possible_attrs = obj1._all_attrs
     assert possible_attrs == obj2._all_attrs
     difference_found = False
@@ -171,20 +171,20 @@ def compare_arrays(obj1, obj2, objtype):
         arr2 = obj2[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
-        rescale_factor = arr2[0]/arr1[0]
+        rescale_factor = arr2[0] / arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
     elif objtype == 'SpikeTrain':
         arr1 = obj1.times[:].magnitude
         arr2 = obj2.times[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
-        rescale_factor = arr2[0]/arr1[0]
+        rescale_factor = arr2[0] / arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
         arr1 = obj1.waveforms[:].magnitude
         arr2 = obj2.waveforms[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
-        rescale_factor = arr2[0]/arr1[0]
+        rescale_factor = arr2[0] / arr1[0]
         if compare_arr(arr1, arr2, rescale_factor):
             difference_found = False
     elif objtype == 'Event':
@@ -192,7 +192,7 @@ def compare_arrays(obj1, obj2, objtype):
         arr2 = obj2.times[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
-        rescale_factor = arr2/arr1[0]
+        rescale_factor = arr2 / arr1[0]
         difference_found = compare_arr(arr1, arr2, rescale_factor)
         arr1 = obj1.labels[:]
         arr2 = obj2.labels[:]
@@ -207,7 +207,7 @@ def compare_arrays(obj1, obj2, objtype):
               ' times as high as in 1. (old) version')
 
 
-def compare_arr(array1, array2, rescale_factor):    # Implement percentages of equality
+def compare_arr(array1, array2, rescale_factor):  # Implement percentages of equality
     if not isinstance(rescale_factor, np.ndarray) and rescale_factor != 1:
         array2 /= rescale_factor
     elif isinstance(rescale_factor, np.ndarray) and len(rescale_factor > 0):
@@ -220,12 +220,12 @@ def compare_arr(array1, array2, rescale_factor):    # Implement percentages of e
         print('Length is the same, testing for equality: ')
         if (array1 != array2).any():
             return False
-        # for a, b in zip(array1, array2):
-        #     if (a != b).any():
-        #         difference_found = True
-        # if difference_found:
-        #     print('Values are not the same even after rescaling')
-        # return difference_found
+            # for a, b in zip(array1, array2):
+            #     if (a != b).any():
+            #         difference_found = True
+            # if difference_found:
+            #     print('Values are not the same even after rescaling')
+            # return difference_found
 
 
 def compare_links(obj1, obj2, objtype):
@@ -255,11 +255,11 @@ def compare_links(obj1, obj2, objtype):
         # Does not cover the case that objects have changed, eg. St is linked to Unit1 instead of Unit2
         return
     else:
-        if len(all_links1)!=len(all_links2):
+        if len(all_links1) != len(all_links2):
             print('Different number of links to other objects for this ', objtype)
         a = 0
         b = 0
-        while a<len(all_links1) and b < len(all_links2):
+        while a < len(all_links1) and b < len(all_links2):
             if all_links1[a] == all_links2[b]:
                 a += 1
                 b += 1
@@ -277,4 +277,4 @@ def compare_links(obj1, obj2, objtype):
                 b -= 1
 
 
-outputComparison.compare(old_brio_load(), new_brio_load())
+OutputComparison.compare(old_brio_load(), new_brio_load())
