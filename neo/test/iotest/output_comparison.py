@@ -75,8 +75,7 @@ class OutputComparison():
 
     @staticmethod
     def compare(block1, block2):
-        object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'AnalogSignal',
-                                'SpikeTrain', 'Event', 'Epoch']
+        object_types_to_test = ['Segment', 'ChannelIndex', 'Unit', 'Epoch']
         print('*' * 30, 'Testing {}'.format('Block'))
         compare_objects(block1, block2, 'Block')
         for objtype in object_types_to_test:
@@ -96,6 +95,118 @@ class OutputComparison():
                 elif obj2 is None:
                     print('Additional object in 1. (old) version: ', obj1.name)
 
+        object_types_to_test = ['AnalogSignal', 'SpikeTrain', 'Event']
+        for objtype in object_types_to_test:
+            print ('*' * 30, 'Testing {}'.format(objtype))
+            objects1 = block1.list_children_by_class(objtype)
+            objects2 = block2.list_children_by_class(objtype)
+            if len(objects1) != len(objects2):
+                print('Number of ', objtype, 's is different in the blocks: ', len(objects1), ' objects != ',
+                      len(objects2), ' objects')
+            allocation, double_allocs, not_allocs = allocate_objects(objects1, objects2, objtype)
+            for pair in allocation:
+                print('Comparing ', pair[0], 'th object of type ', objtype, ' from 2. (new) version with ',
+                      pair[1], 'th object from 1. (old) version')
+                compare_objects(objects1[pair[1]], objects2[pair[0]], objtype)
+            for i in not_allocs:
+                print ('New object of type ', objtype, 'with name ', objects2[i].name,
+                       '(Index: ', i, ' does not match any object from old version')
+            # i = 0
+            for i in range(0, len(double_allocs) - 2):
+                index_of_highest_score = [0]
+                index_of_object = 0
+                while double_allocs[i][0] == index_of_object:
+                    score1 = compare_objects(objects1[double_allocs[i][0]], objects2[double_allocs[i][0]], objtype)
+                    highest_score = compare_objects(objects1[double_allocs[index_of_highest_score[0]][0]],
+                                                    objects2[double_allocs[index_of_highest_score[0]][0]], objtype)
+                    if score1 > highest_score:
+                        index_of_highest_score[0] = i
+                    elif score1 == highest_score:
+                        index_of_highest_score.append(i)
+                    i += 1
+                    if len(index_of_highest_score) > 1 and index_of_highest_score[1] != index_of_highest_score[0]:
+                        index_of_highest_score = [index_of_highest_score[0]]
+
+                index_of_object += 1
+
+
+def allocate_objects(objects1, objects2, objtype):
+    array1 = []
+    array2 = []
+    allocation = []
+    if objtype == 'AnalogSignal':
+        for obj in objects1:
+            array1.append(obj[:])
+        for obj in objects2:
+            array2.append(obj[:])
+        allocation = allocate_arrays(array1, array2)
+    elif objtype == 'SpikeTrain':
+        for obj in objects1:
+            array1.append(obj.times)
+        for obj in objects2:
+            array2.append(obj.times)
+        allocation = allocate_arrays(array1, array2)
+        # array1, array2 = []
+        # for obj in objects1:
+        #     array1.append(obj.waveforms)
+        # for obj in objects2:
+        #     array2.append(obj.waveforms)
+        # allocate_arrays(array1, array2)
+    elif objtype == 'Event':
+        for obj in objects1:
+            array1.append(obj.times)
+        for obj in objects2:
+            array2.append(obj.times)
+        allocation = allocate_arrays(array1, array2, verbose=True)
+        # array1, array2 = []
+        # for obj in objects1:
+        #     array1.append(obj.labels)
+        # for obj in objects2:
+        #     array2.append(obj.labels)
+        # allocate_arrays(array1, array2)
+    else:
+        allocation = allocate_names(objects1, objects2)
+    double_allocs = []
+    not_allocs = []
+    for i in range(0, len(allocation) - 2):
+        if allocation[i][0] >= allocation[i + 1][0] or (i > 0 and allocation[i - 1][0] >= allocation[i][0]):
+            double_allocs.append(allocation[i])
+        elif allocation[i][0] < allocation[i + 1][0] - 1:
+            a = allocation[i][0]
+            while a < allocation[i + 1][0]:
+                not_allocs.append(a)
+    return allocation, double_allocs, not_allocs
+
+
+def allocate_names(objects1, objects2):  # On allocation new objects` indexes are listed first!!!
+    allocation = []
+    for a in range(len(objects2) - 1):
+        for b in range(len(objects1) - 1):
+            obj1 = objects1[a]
+            obj2 = objects2[a]
+            if obj1.name == obj2.name:
+                allocation.append([a, b])
+    return allocation
+
+
+def allocate_arrays(array1, array2, verbose=False):
+    allocation = []
+    if verbose:
+        print('Event!')
+    for a in range(0, len(array2)):
+        for b in range(0, len(array1)):
+            arr1 = array1[b].magnitude
+            arr2 = array2[a].magnitude
+            if len(arr1)!=0 and len(arr2) != 0:
+                arr2 /= arr2[0]/arr1[0]
+            if len(arr1) != len(arr2):
+                continue
+            elif not np.allclose(arr1, arr2, atol=0.000000000000000001):
+                continue
+            else:
+                allocation.append([a, b])
+    return allocation
+
 
 def compare_objects(obj1, obj2, objtype):
     compare_annotations(obj1.annotations, obj2.annotations)
@@ -103,6 +214,7 @@ def compare_objects(obj1, obj2, objtype):
     if objtype in ['Event', 'AnalogSignal', 'SpikeTrain']:
         compare_arrays(obj1, obj2, objtype)
     compare_links(obj1, obj2, objtype)
+    return 100
 
 
 def compare_annotations(annos1, annos2):
@@ -172,20 +284,20 @@ def compare_arrays(obj1, obj2, objtype):
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0] / arr1[0]
-        difference_found = compare_arr(arr1, arr2, rescale_factor)
+        difference_found = array_is_different(arr1, arr2, rescale_factor)
     elif objtype == 'SpikeTrain':
         arr1 = obj1.times[:].magnitude
         arr2 = obj2.times[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0] / arr1[0]
-        difference_found = compare_arr(arr1, arr2, rescale_factor)
+        difference_found = array_is_different(arr1, arr2, rescale_factor)
         arr1 = obj1.waveforms[:].magnitude
         arr2 = obj2.waveforms[:].magnitude
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2[0] / arr1[0]
-        if compare_arr(arr1, arr2, rescale_factor):
+        if not array_is_different(arr1, arr2, rescale_factor):
             difference_found = False
     elif objtype == 'Event':
         arr1 = obj1.times[:].magnitude
@@ -193,11 +305,11 @@ def compare_arrays(obj1, obj2, objtype):
         if obj1.units != obj2.units:
             print('Units of these ', objtype, ' arrays differ: ', obj1.units, ' != ', obj2.units)
         rescale_factor = arr2 / arr1[0]
-        difference_found = compare_arr(arr1, arr2, rescale_factor)
+        difference_found = array_is_different(arr1, arr2, rescale_factor)
         arr1 = obj1.labels[:]
         arr2 = obj2.labels[:]
         rescale_factor = 1
-        if compare_arr(arr1, arr2, rescale_factor):
+        if not array_is_different(arr1, arr2, rescale_factor):
             difference_found = False
     if not difference_found:
         rescale_factor_used = rescale_factor
@@ -207,7 +319,7 @@ def compare_arrays(obj1, obj2, objtype):
               ' times as high as in 1. (old) version')
 
 
-def compare_arr(array1, array2, rescale_factor):  # Implement percentages of equality
+def array_is_different(array1, array2, rescale_factor):  # Implement percentages of equality
     if not isinstance(rescale_factor, np.ndarray) and rescale_factor != 1:
         array2 /= rescale_factor
     elif isinstance(rescale_factor, np.ndarray) and len(rescale_factor > 0):
@@ -219,7 +331,7 @@ def compare_arr(array1, array2, rescale_factor):  # Implement percentages of equ
     else:
         print('Length is the same, testing for equality: ')
         if (array1 != array2).any():
-            return False
+            return True
             # for a, b in zip(array1, array2):
             #     if (a != b).any():
             #         difference_found = True
