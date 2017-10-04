@@ -58,6 +58,18 @@ def new_brio_load():
     newbrio_reader = BlackrockIO(dirname)
     # new_block = newbrio_reader.read_block()
     new_block = newbrio_reader.read_block(load_waveforms=True)
+    new_signal = newbrio_reader.get_analogsignal_chunk()[:, 0]
+    oldbrio_reader = old_brio(dirname)
+    old_block = oldbrio_reader.read_block(
+        # n_starts=[None], n_stops=None,
+        channels={1, 2, 3, 4, 5, 6, 7, 8, 129, 130},
+        nsx_to_load=5,
+        units='all',
+        load_events=True,
+        load_waveforms=True)
+    anasig = old_block.list_children_by_class(AnalogSignal)[0]
+    print(anasig[:])
+    print(new_signal)
     # output(new_block)
     print 'Loading new IO done'
     return new_block
@@ -389,4 +401,5 @@ def compare_links(obj1, obj2, objtype):
                 b -= 1
 
 
-OutputComparison.compare(old_brio_load(), new_brio_load())
+# OutputComparison.compare(old_brio_load(), new_brio_load())
+new_brio_load()
