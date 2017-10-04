@@ -263,7 +263,7 @@ class ExampleRawIO(BaseRawIO):
         nb_spikes = 20
         return nb_spikes
     
-    def _spike_timestamps(self,  block_index, seg_index, unit_index, t_start, t_stop):
+    def _get_spike_timestamps(self,  block_index, seg_index, unit_index, t_start, t_stop):
         # In our IO, timstamp are internally coded 'int64' and they
         # represent the index of the signals 10kHz
         # we are lucky: spikes have the same discharge in all segments!!
@@ -291,7 +291,7 @@ class ExampleRawIO(BaseRawIO):
         spike_times /= 10000. # because 10kHz
         return spike_times
 
-    def _spike_raw_waveforms(self, block_index, seg_index, unit_index, t_start, t_stop):
+    def _get_spike_raw_waveforms(self, block_index, seg_index, unit_index, t_start, t_stop):
         #this must return a 3D numpy array (nb_spike, nb_channel, nb_sample)
         #in the original dtype
         #this must be as fast as possible.
@@ -322,22 +322,35 @@ class ExampleRawIO(BaseRawIO):
             #epoch channel
             return 10
     
-    def _event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
+    def _get_event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
         #the main difference between spike channel and event channel
         # is that for here we have 3 numpy array timestamp, durations, labels
         #durations must be None for 'event'
          #label must a dtype ='U'
         
         # in our IO event are directly coded in seconds
-        t_start = self._segment_t_start(block_index, seg_index)
+        seg_t_start = self._segment_t_start(block_index, seg_index)
         if event_channel_index==0:
-            timestamp = np.arange(0, 6, dtype='float64') + t_start
+            timestamp = np.arange(0, 6, dtype='float64') + seg_t_start
             durations = None
             labels = np.array(['trigger_a', 'trigger_b']*3, dtype='U12')
         elif event_channel_index==1:
-            timestamp = np.arange(0, 10, dtype='float64') + .5  + t_start
+            timestamp = np.arange(0, 10, dtype='float64') + .5  + seg_t_start
             durations = np.ones((10),  dtype='float64') * .25
             labels = np.array(['zoneX']*5+['zoneZ']*5, dtype='U12')
+        
+        if t_start is not None:
+            keep = timestamp>=t_start
+            timestamp, labels = timestamp[keep], labels[keep]
+            if durations is not None:
+                durations = durations[keep]
+        
+        if t_stop is not None:
+            keep = timestamp<=t_stop
+            timestamp, labels = timestamp[keep], labels[keep]
+            if durations is not None:
+                durations = durations[keep]
+
         
         return timestamp, durations, labels
 

@@ -21,10 +21,10 @@ So this handle **only** one simplified but very frequent case of dataset:
     * Only one channel set  for AnalogSignal (aka ChannelIndex) stable along Segment
     * Only one channel set  for SpikeTrain (aka Unit) stable along Segment
     * AnalogSignal have all the same sampling_rate acroos all Segment
-    * t_start/t_stop are the same for all object (AnalogSignal/SpikeTrain) inside a Segment
+    * t_start/t_stop are the same for many object (SpikeTrain, Event) inside a Segment
     * AnalogSignal should all have the same sampling_rate otherwise the won't be read
-      a the same time.(so signal_group_mode=='split-all' in BaseFromRaw
-    
+      a the same time. So signal_group_mode=='split-all' in BaseFromRaw
+
 
 An helper class `neo.io.basefromrawio.BaseFromRaw` should transform a RawIO to
 neo legacy IO from free.
@@ -33,6 +33,9 @@ With this API the IO have an attributes `header` with necessary keys.
 See ExampleRawIO as example.
 
 
+BaseRawIO implement a possible presistent cache system that can be used
+by some IOs to avoid very long parse_header(). The idea is that some variable
+or vector can be store somewhere (near the fiel, /tmp, any path)
 
 
 """
@@ -42,12 +45,19 @@ from __future__ import  print_function, division, absolute_import
 
 import logging
 import numpy as np
+import os, sys
 
 from neo import logging_handler
 
+try:
+    import joblib
+    HAVE_JOBLIB = True
+except ImportError:
+    HAVE_JOBLIB = False
 
 
-possible_raw_modes = ['one-file', 'multi-file', 'one-dir','multi-dir', 'url', 'other']
+
+possible_raw_modes = ['one-file', 'multi-file', 'one-dir',] #'multi-dir', 'url', 'other'
 
 error_header = 'Header is not read yet, do parse_header() first'
 
@@ -98,7 +108,15 @@ class BaseRawIO(object):
     rawmode = None # one key in possible_raw_modes
     
 
-    def __init__(self, **kargs):
+    def __init__(self, use_cache=False,  cache_path='same_as_resource', **kargs):
+        """
+        
+        When rawmode=='one-file' kargs MUST contains 'filename' the filename
+        When rawmode=='multi-file' kargs MUST contains 'filename' one of the filenames.
+        When rawmode=='one-dir' kargs MUST contains 'dirname' the dirname.
+        
+        
+        """
         # create a logger for the IO class
         fullname = self.__class__.__module__ + '.' + self.__class__.__name__
         self.logger = logging.getLogger(fullname)
@@ -111,6 +129,13 @@ class BaseRawIO(object):
         if not corelogger.handlers and not rootlogger.handlers:
             corelogger.addHandler(logging_handler)
         
+        self.use_cache = use_cache
+        if use_cache:
+            assert HAVE_JOBLIB, 'You need to install joblib for cache'
+            self.setup_cache(cache_path)
+        else:
+            self._cache = None
+            
         self.header = None
     
     def parse_header(self):
@@ -343,7 +368,7 @@ class BaseRawIO(object):
         For many RawIO all channels have the same 
         sampling_rate/size/t_start. In that cases, internal flag
         **self._several_channel_groups will be set to False, so
-        `get_analogsignal_chunk)` won't suffer in performance.
+        `get_analogsignal_chunk(..)` won't suffer in performance.
         
         Note that at neo.io level this have an impact on
         `signal_group_mode`. 'split-all'  will work in any situation
@@ -453,10 +478,6 @@ class BaseRawIO(object):
                         channel_indexes=None, channel_names=None, channel_ids=None):
         """
         Return a chunk of raw signal.
-        
-        
-        
-        
         """
         channel_indexes = self._get_channel_indexes(channel_indexes, channel_names, channel_ids)
         if self._several_channel_groups:
@@ -489,7 +510,7 @@ class BaseRawIO(object):
     def spike_count(self,  block_index=0, seg_index=0, unit_index=0):
         return self._spike_count(block_index, seg_index, unit_index)
     
-    def spike_timestamps(self,  block_index=0, seg_index=0, unit_index=0,
+    def get_spike_timestamps(self,  block_index=0, seg_index=0, unit_index=0,
                         t_start=None, t_stop=None):
         """
         The timestamp is as close to the format itself. Sometimes float/int32/int64.
@@ -499,7 +520,7 @@ class BaseRawIO(object):
         t_start/t_sop are limits in seconds.
         
         """
-        timestamp = self._spike_timestamps(block_index, seg_index, unit_index, t_start, t_stop)
+        timestamp = self._get_spike_timestamps(block_index, seg_index, unit_index, t_start, t_stop)
         return timestamp
     
     def rescale_spike_timestamp(self, spike_timestamps, dtype='float64'):
@@ -509,11 +530,10 @@ class BaseRawIO(object):
         return self._rescale_spike_timestamp(spike_timestamps, dtype)
     
     # spiketrain waveform zone
-    def spike_raw_waveforms(self,  block_index=0, seg_index=0, unit_index=0,
+    def get_spike_raw_waveforms(self,  block_index=0, seg_index=0, unit_index=0,
                         t_start=None, t_stop=None):
-        wf = self._spike_raw_waveforms(block_index, seg_index, unit_index, t_start, t_stop)
+        wf = self._get_spike_raw_waveforms(block_index, seg_index, unit_index, t_start, t_stop)
         return wf
-    
     
     def rescale_waveforms_to_float(self, raw_waveforms, dtype='float32', unit_index=0):
         wf_gain = self.header['unit_channels']['wf_gain'][unit_index]
@@ -533,7 +553,7 @@ class BaseRawIO(object):
     def event_count(self,  block_index=0, seg_index=0, event_channel_index=0):
         return self._event_count(block_index, seg_index, event_channel_index)
 
-    def event_timestamps(self,  block_index=0, seg_index=0, event_channel_index=0,
+    def get_event_timestamps(self,  block_index=0, seg_index=0, event_channel_index=0,
                         t_start=None, t_stop=None):
         """
         The timestamp is as close to the format itself. Sometimes float/int32/int64.
@@ -548,7 +568,7 @@ class BaseRawIO(object):
             durations
 
         """
-        timestamp, durations, labels = self._event_timestamps(block_index, seg_index, event_channel_index, t_start, t_stop)
+        timestamp, durations, labels = self._get_event_timestamps(block_index, seg_index, event_channel_index, t_start, t_stop)
         return timestamp, durations, labels
     
     def rescale_event_timestamp(self, event_timestamps, dtype='float64'):
@@ -563,6 +583,57 @@ class BaseRawIO(object):
         """
         return self._rescale_epoch_duration(raw_duration, dtype)  
     
+    
+    def setup_cache(self, cache_path, **init_kargs):
+        if self.rawmode in ('one-file', 'multi-file'):
+            ressource_name = self.filename
+        elif self.rawmode=='one-dir':
+            ressource_name = self.dirname
+        else:
+            raise(NotImlementedError)
+        
+        if cache_path=='home':
+            if sys.platform.startswith('win'):
+                dirname = os.path.join(os.environ['APPDATA'], 'neo_rawio_cache')
+            elif  sys.platform.startswith('darwin'):
+                dirname = '~/Library/Application Support/neo_rawio_cache'
+            else:
+                dirname = os.path.expanduser('~/.config/neo_rawio_cache')
+            dirname = os.path.join(dirname, self.__class__.__name__)
+            
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+        elif cache_path=='same_as_resource':
+            dirname = os.path.dirname(ressource_name)
+        else:
+            assert os.path.exists(cache_path),\
+                    'cache_path do not exists use "home" or "same_as_file" to make this auto'
+        
+        #the hash of the ressource (dir of file) is done with filename+datetime
+        #TODO make something more sofisticated when rawmode='one-dir' that use all filename and datetime
+        d = dict(ressource_name=ressource_name, mtime=os.path.getmtime(ressource_name))
+        hash = joblib.hash(d, hash_name='md5')
+        
+        #name is compund by the real_n,ame and the hash
+        name = '{}_{}'.format(os.path.basename(ressource_name), hash)
+        self.cache_filename = os.path.join(dirname, name)
+        
+        if os.path.exists(self.cache_filename):
+            self.logger.warning('Use existing cache file {}'.format(self.cache_filename))
+            self._cache = joblib.load(self.cache_filename)
+        else:
+            self.logger.warning('Create cache file {}'.format(self.cache_filename))
+            self._cache = {}
+            self.dump_cache()
+    
+    def add_in_cache(self, **kargs):
+        assert self.use_cache
+        self._cache.update(kargs)
+        self.dump_cache()
+    
+    def dump_cache(self):
+        assert self.use_cache
+        joblib.dump(self._cache, self.cache_filename)
 
     ##################
     
@@ -575,12 +646,7 @@ class BaseRawIO(object):
     
     def _source_name(self):
         raise(NotImplementedError)
-    
-    #~ def _block_count(self):
-        #~ raise(NotImplementedError)
-    
-    #~ def _segment_count(self, block_index):
-        #~ raise(NotImplementedError)
+
     
     def _segment_t_start(self, block_index, seg_index):
         raise(NotImplementedError)
@@ -604,7 +670,7 @@ class BaseRawIO(object):
     def _spike_count(self,  block_index, seg_index, unit_index):
         raise(NotImplementedError)
     
-    def _spike_timestamps(self,  block_index, seg_index, unit_index, t_start, t_stop):
+    def _get_spike_timestamps(self,  block_index, seg_index, unit_index, t_start, t_stop):
         raise(NotImplementedError)
     
     def _rescale_spike_timestamp(self, spike_timestamps, dtype):
@@ -612,7 +678,7 @@ class BaseRawIO(object):
 
     ###
     # spike waveforms zone
-    def _spike_raw_waveforms(self, block_index, seg_index, unit_index, t_start, t_stop):
+    def _get_spike_raw_waveforms(self, block_index, seg_index, unit_index, t_start, t_stop):
         raise(NotImplementedError)
     
     ###
@@ -620,7 +686,7 @@ class BaseRawIO(object):
     def _event_count(self, block_index, seg_index, event_channel_index):
         raise(NotImplementedError)
     
-    def _event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
+    def _get_event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
         raise(NotImplementedError)
     
     def _rescale_event_timestamp(self, event_timestamps, dtype):

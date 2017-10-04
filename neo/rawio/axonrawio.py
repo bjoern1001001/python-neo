@@ -276,7 +276,7 @@ class AxonRawIO(BaseRawIO):
     def _event_count(self, block_index, seg_index, event_channel_index):
         return self._raw_ev_timestamps.size
     
-    def _event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
+    def _get_event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
         #In ABF timstamps are not attached too any particular segment
         # so each segmetn acees all event
         timestamp = self._raw_ev_timestamps
@@ -341,16 +341,16 @@ class AxonRawIO(BaseRawIO):
                     # Go over EpochInfoPerDAC and change the analog signal
                     # according to the epochs
                     epochInfo = info['dictEpochInfoPerDAC'][DACNum]
-                    for epochNum, epoch in iteritems(epochInfo):
+                    for epochNum, epoch in epochInfo.items():
                         i_begin = i_last
                         i_end = i_last + epoch['lEpochInitDuration'] +\
                             epoch['lEpochDurationInc'] * epiNum
                         dif = i_end-i_begin
-                        sig[i_begin:i_end] = np.ones((dif, 1)) *\
-                            pq.Quantity(1, unit) * (epoch['fEpochInitLevel'] +
-                                                    epoch['fEpochLevelInc'] *
+                        sig[i_begin:i_end] = np.ones((dif)) *\
+                            (epoch['fEpochInitLevel'] +epoch['fEpochLevelInc'] *
                                                     epiNum)
-                        i_last += epoch['lEpochInitDuration']
+                        i_last += epoch['lEpochInitDuration'] +\
+                            epoch['lEpochDurationInc'] * epiNum
                 signals.append(sig)
             sigs_by_segments.append(signals)
         

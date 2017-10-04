@@ -8,6 +8,7 @@ from __future__ import division
 
 import os
 import pickle
+import copy
 
 import unittest
 
@@ -27,6 +28,9 @@ from neo.core.channelindex import ChannelIndex
 from neo.core import Segment
 from neo.test.tools import (assert_arrays_almost_equal,
                             assert_neo_object_is_compliant,
+                            assert_same_sub_schema,
+                            assert_objects_equivalent,
+                            assert_same_attributes,
                             assert_same_sub_schema)
 from neo.test.generate_datasets import (get_fake_value, get_fake_values,
                                         fake_neo, TEST_ANNOTATIONS)
@@ -379,25 +383,30 @@ class TestAnalogSignalArrayMethods(unittest.TestCase):
         n = 8  # number of channels
         signal = AnalogSignal(np.arange(n * 100.0).reshape(100, n),
                               sampling_rate=1*pq.kHz,
-                              units="mV")
+                              units="mV",
+                              name="test")
         self.assertEqual(signal.shape, (100, n))
         signal.channel_index = ChannelIndex(index=np.arange(n, dtype=int),
                                             channel_names=["channel{0}".format(i) for i in range(n)])
+        signal.channel_index.analogsignals.append(signal)
         odd_channels = signal[:, 1::2]
         self.assertEqual(odd_channels.shape, (100, n//2))
         assert_array_equal(odd_channels.channel_index.index, np.arange(n//2, dtype=int))
         assert_array_equal(odd_channels.channel_index.channel_names, ["channel{0}".format(i) for i in range(1, n, 2)])
         assert_array_equal(signal.channel_index.channel_names, ["channel{0}".format(i) for i in range(n)])
+        self.assertEqual(odd_channels.channel_index.analogsignals[0].name, signal.name)
 
     def test__copy_should_let_access_to_parents_objects(self):
-        ##copy
         result =  self.signal1.copy()
         self.assertIs(result.segment, self.signal1.segment)
         self.assertIs(result.channel_index, self.signal1.channel_index)
-        ## deep copy (not fixed yet)
-        #result = copy.deepcopy(self.signal1)
-        #self.assertEqual(result.segment, self.signal1.segment)
-        #self.assertEqual(result.channel_index, self.signal1.channel_index)
+
+    def test__deepcopy_should_let_access_to_parents_objects(self):
+        result = copy.deepcopy(self.signal1)
+        self.assertIsInstance(result.segment, Segment)
+        self.assertIsInstance(result.channel_index, ChannelIndex)
+        assert_same_sub_schema(result.segment, self.signal1.segment)
+        assert_same_sub_schema(result.channel_index, self.signal1.channel_index)
 
     def test__getitem_should_return_single_quantity(self):
         result1 = self.signal1[0, 0]
