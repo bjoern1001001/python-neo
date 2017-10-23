@@ -126,7 +126,7 @@ class BaseFromRaw(BaseIO):
         for channel_index in channel_indexes_list:
             for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_index, 
                                                         signal_group_mode=signal_group_mode).items():
-                neo_channel_index = ChannelIndex(index=ind_within, channel_names=all_channels[ind_abs]['name'].astype('S'),
+                neo_channel_index = ChannelIndex(index=np.array([0]), channel_names=all_channels[ind_abs]['name'].astype('S'),
                                 channel_ids=all_channels[ind_abs]['id'], name='Channel group {}'.format(i))
                 bl.channel_indexes.append(neo_channel_index)
         
