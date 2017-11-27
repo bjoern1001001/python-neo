@@ -29,7 +29,13 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
         'FileSpec2.3001.nev',
         'FileSpec2.3001.ns5',
         'FileSpec2.3001.ccf',
-        'FileSpec2.3001.mat']
+        'FileSpec2.3001.mat',
+        #'blackrock_2_1/l101210-001.mat',
+        #'blackrock_2_1/l101210-001_nev-02_ns5.mat',
+        'blackrock_2_1/l101210-001.ns2',
+        'blackrock_2_1/l101210-001.ns5',
+        'blackrock_2_1/l101210-001.nev',
+        'blackrock_2_1/l101210-001-02.nev']
 
     @unittest.skipUnless(HAVE_SCIPY, "requires scipy")
     def test_compare_blackrockio_with_matlabloader(self):
