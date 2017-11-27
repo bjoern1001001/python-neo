@@ -126,7 +126,7 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
         parameters = [('blackrock_2_1/l101210-001_nev-02_ns5.mat',
                        {'nsx_to_load': 5, 'nev_override': '-'.join([dirname, '02'])}, 96),
                       ('blackrock_2_1/l101210-001.mat', {'nsx_to_load': 2}, 6)]
-        for index, param in enumerate(parameters):
+        for param in parameters:
             # Load data from Matlab generated files
             ml = scipy.io.loadmat(self.get_filename_path(filename=param[0]))
             lfp_ml = ml['lfp']  # (channel x time) LFP matrix
@@ -145,8 +145,7 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
             self.assertGreater(reader.signal_channels_count(), 0)
 
             for c in range(0, param[2]):
-                chidx = c
-                raw_sigs = reader.get_analogsignal_chunk(channel_indexes=[chidx])
+                raw_sigs = reader.get_analogsignal_chunk(channel_indexes=[c])
                 raw_sigs = raw_sigs.flatten()
                 assert_equal(raw_sigs[:], lfp_ml[c, :])
 
