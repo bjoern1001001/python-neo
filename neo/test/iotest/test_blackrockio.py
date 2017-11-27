@@ -136,7 +136,7 @@ class CommonTests(BaseTestIO, unittest.TestCase):
 
     def test_inputs_V21(self):
         """
-        Test various inputs to BlackrockIO.read_block with version 2.3 file
+        Test various inputs to BlackrockIO.read_block with version 2.1 file
         to check for parsing errors.
         """
         filename = self.get_filename_path('blackrock_2_1/l101210-001')
@@ -185,16 +185,16 @@ class CommonTests(BaseTestIO, unittest.TestCase):
         # Same length?
         self.assertEqual(lena, lenb)
         # Length should be 100 samples exactly
-        self.assertEqual(lena, 3640)
+        self.assertEqual(lena, 100)
 
-        # test 4 Units
-        time_slices = [(0, 1000 * pq.ms), (3000 * pq.ms, 4000 * pq.ms)]
+        # test Units
+        time_slices = [(0, 1000 * pq.ms), (2500 * pq.ms, 3500 * pq.ms)]
         block = reader.read_block(time_slices=time_slices, load_waveforms=True,
                                   units_group_mode='all-in-one')
 
         self.assertEqual(len(block.segments), 2)
         self.assertEqual(len(block.segments[0].analogsignals), 6)
-        self.assertEqual(len(block.channel_indexes[-1].units), 4)
+        self.assertEqual(len(block.channel_indexes[-1].units), 218)
         self.assertEqual(len(block.channel_indexes[-1].units),
                          len(block.segments[0].spiketrains))
 
