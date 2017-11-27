@@ -117,13 +117,15 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
         provided by the company. The output for comparison is provided in a
         .mat file created by the script create_data_matlab_blackrock.m.
         The function tests LFPs, spike times, and digital events.
+
+        Ported to the rawio API by Samuel Garcia.
         """
 
         dirname = self.get_filename_path('blackrock_2_1/l101210-001')
         # First run with parameters for ns5, then run with correct parameters for ns2
         parameters = [('blackrock_2_1/l101210-001_nev-02_ns5.mat',
                        {'nsx_to_load': 5, 'nev_override': '-'.join([dirname, '02'])}, 96),
-                      ('blackrock_2_1/l101210-001.mat', {'nsx_to_load': 2}, 7)]
+                      ('blackrock_2_1/l101210-001.mat', {'nsx_to_load': 2}, 6)]
         for index, param in enumerate(parameters):
             # Load data from Matlab generated files
             ml = scipy.io.loadmat(self.get_filename_path(filename=param[0]))
@@ -142,12 +144,8 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
             # Check if analog data are equal
             self.assertGreater(reader.signal_channels_count(), 0)
 
-            for c in range(0, param[3]):
+            for c in range(0, param[2]):
                 chidx = c
-                if param[3] == 7:
-                    if c == 6:
-                        chidx = c - 1
-                    chidx = chidx + 136
                 raw_sigs = reader.get_analogsignal_chunk(channel_indexes=[chidx])
                 raw_sigs = raw_sigs.flatten()
                 assert_equal(raw_sigs[:], lfp_ml[c, :])
@@ -166,7 +164,7 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
                 io_spikes = reader.get_spike_timestamps(unit_index=unit_index)
                 assert_equal(io_spikes, matlab_spikes)
 
-                # Check waveforms
+                # Check all waveforms
                 io_waveforms = reader.get_spike_raw_waveforms(unit_index=unit_index)
                 io_waveforms = io_waveforms[:, 0, :]  # remove dim 1
                 matlab_wf = wf_ml[np.nonzero(
@@ -186,7 +184,6 @@ class TestBlackrockRawIO(BaseTestRawIO, unittest.TestCase, ):
                         python_digievents = all_timestamps[labels == label]
                         matlab_digievents = mts_ml[mid_ml == int(label)]
                         assert_equal(python_digievents, matlab_digievents)
-
 
 
 if __name__ == '__main__':
