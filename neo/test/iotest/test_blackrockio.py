@@ -139,7 +139,7 @@ class CommonTests(BaseTestIO, unittest.TestCase):
         to check for parsing errors.
         """
         filename = self.get_filename_path('blackrock_2_1/l101210-001')
-        reader = BlackrockIO(filename=filename, verbose=False, nsx_to_load=2, )
+        reader = BlackrockIO(filename=filename, verbose=False, nsx_to_load=5, )
 
         # Load data to maximum extent, one None is not given as list
         block = reader.read_block(time_slices=None, load_waveforms=False)
