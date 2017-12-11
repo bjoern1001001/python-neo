@@ -303,11 +303,11 @@ class BaseFromRaw(BaseIO):
                         sig_t_start += (i_start/sr).rescale('s')
                     else:
                         i_start = None
-                    
-                    raw_signal = self.get_analogsignal_chunk(block_index=block_index, seg_index=seg_index,
-                                i_start=i_start, i_stop=i_stop, channel_indexes=channel_indexes)
-                    float_signal = self.rescale_signal_raw_to_float(raw_signal,  dtype='float32',
-                                                                                            channel_indexes=channel_indexes)
+                    if signal_group_mode != 'split-all':
+                        raw_signal = self.get_analogsignal_chunk(block_index=block_index, seg_index=seg_index,
+                                    i_start=i_start, i_stop=i_stop, channel_indexes=channel_indexes)
+                        float_signal = self.rescale_signal_raw_to_float(raw_signal,  dtype='float32',
+                                                                                        channel_indexes=channel_indexes)
                 
                 for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_indexes,
                                                 signal_group_mode=signal_group_mode).items():
@@ -333,6 +333,14 @@ class BaseFromRaw(BaseIO):
                                 sampling_rate=sr, t_start=sig_t_start, **annotations)
                         anasig.lazy_shape = (sig_size, len(ind_within))
                     else:
+                        if signal_group_mode == 'split-all':
+                            raw_signal = self.get_analogsignal_chunk(block_index=block_index, seg_index=seg_index,
+                                                                     i_start=i_start, i_stop=i_stop,
+                                                                     channel_indexes=ind_abs)
+                            float_signal = self.rescale_signal_raw_to_float(raw_signal, dtype='float32',
+                                                                        channel_indexes=ind_abs)
+                        anasig = AnalogSignal(float_signal[:], units=units,  copy=False,
+                                sampling_rate=sr, t_start=sig_t_start, **annotations)
                         anasig = AnalogSignal(float_signal[:, ind_within], units=units,  copy=False,
                                 sampling_rate=sr, t_start=sig_t_start, **annotations)
                     seg.analogsignals.append(anasig)
