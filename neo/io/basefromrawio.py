@@ -411,9 +411,10 @@ class BaseFromRaw(BaseIO):
             annotations = check_annotations(annotations)
             
             if event_channels['type'][chan_ind] == b'event':
-                e = Event(times=ev_times, labels=ev_labels, units='s', copy=False, **annotations)
-                e.segment = seg
-                seg.events.append(e)
+                if len(ev_times) > 0 or lazy:
+                    e = Event(times=ev_times, labels=ev_labels, units='s', copy=False, **annotations)
+                    e.segment = seg
+                    seg.events.append(e)
             elif event_channels['type'][chan_ind] == b'epoch':
                 e = Epoch(times=ev_times, durations=ev_durations, labels=ev_labels,
                                         units='s', copy=False, **annotations)
