@@ -71,7 +71,7 @@ class BaseFromRaw(BaseIO):
         self.parse_header()
     
     def read_block(self, block_index=0, lazy=False, cascade=True, signal_group_mode=None, 
-                units_group_mode=None, load_waveforms=False, time_slices=None):
+                units_group_mode=None, load_waveforms=False, time_slices=None, channels_to_load=None):
         """
         
         
@@ -125,6 +125,9 @@ class BaseFromRaw(BaseIO):
         all_channels = self.header['signal_channels']
         channel_indexes_list = self.get_group_channel_indexes()
         for channel_index in channel_indexes_list:
+            #if channels_to_load is not None:
+            #   channel_index = np.asarray([x - 1 for x in channels_to_load])
+            channel_index = compare_channels(channel_index, channels_to_load)[1]
             for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_index, 
                                                         signal_group_mode=signal_group_mode).items():
                 chidx_annotations = self.raw_annotations['signal_channels'][i]
@@ -141,18 +144,19 @@ class BaseFromRaw(BaseIO):
         #  * Each units is assigned to one ChannelIndex : 'split-all'
         # This is kept for compatibility
         unit_channels = self.header['unit_channels']
+        unit_indexes = compare_unit_channels(unit_channels, channels_to_load)
         if units_group_mode=='all-in-one':
-            if unit_channels.size>0:
+            if len(unit_indexes) > 0:
                 channel_index = ChannelIndex(index=np.array([], dtype='i'),
                                         name='ChannelIndex for all Unit')
                 bl.channel_indexes.append(channel_index)
-            for c in range(unit_channels.size):
+            for c in unit_indexes:
                 unit_annotations = self.raw_annotations['unit_channels'][c]
                 unit = Unit(**unit_annotations)
                 channel_index.units.append(unit)
                 
         elif units_group_mode=='split-all':
-            for c in range(len(unit_channels)):
+            for c in unit_indexes:
                 unit_annotations = self.raw_annotations['unit_channels'][c]
                 unit = Unit(**unit_annotations)
                 channel_index = ChannelIndex(index=np.array([], dtype='i'),
@@ -163,9 +167,9 @@ class BaseFromRaw(BaseIO):
         if time_slices is None:
             #Read the real segment counts
             for seg_index in range(self.segment_count(block_index)):
-                seg =  self.read_segment(block_index=block_index, seg_index=seg_index, 
+                seg = self.read_segment(block_index=block_index, seg_index=seg_index,
                                                                     lazy=lazy, cascade=cascade, signal_group_mode=signal_group_mode,
-                                                                    load_waveforms=load_waveforms)
+                                                                    load_waveforms=load_waveforms, channels_to_load=channels_to_load)
                 bl.segments.append(seg)
                 
         else:
@@ -185,9 +189,10 @@ class BaseFromRaw(BaseIO):
                 if related_seg_index is None:
                     raise(ValueError('time_slice not in any segment range  {}'.format(time_slice)))
                 
-                seg =  self.read_segment(block_index=block_index, seg_index=related_seg_index,
+                seg = self.read_segment(block_index=block_index, seg_index=related_seg_index,
                                                                     lazy=lazy, cascade=cascade, signal_group_mode=signal_group_mode,
-                                                                    load_waveforms=load_waveforms, time_slice=time_slice)
+                                                                    load_waveforms=load_waveforms, time_slice=time_slice,
+                                                                    channels_to_load=channels_to_load)
                 seg.index = s
                 bl.segments.append(seg)
                 
@@ -204,6 +209,7 @@ class BaseFromRaw(BaseIO):
                 if units_group_mode=='all-in-one':
                     bl.channel_indexes[nsig].units[c].spiketrains.append(sptr)
                 elif units_group_mode=='split-all':
+                    print(c)
                     bl.channel_indexes[nsig+c].units[0].spiketrains.append(sptr)
         
         bl.create_many_to_one_relationship()
@@ -211,7 +217,7 @@ class BaseFromRaw(BaseIO):
         return bl
 
     def read_segment(self, block_index=0, seg_index=0, lazy=False, cascade=True, 
-                        signal_group_mode=None, load_waveforms=False, time_slice=None):
+                        signal_group_mode=None, load_waveforms=False, time_slice=None, channels_to_load=None):
         """
         :param block_index: int default 0. In case of several block block_index can be specified.
         
@@ -298,25 +304,27 @@ class BaseFromRaw(BaseIO):
                         i_stop = None
                     if t_start is not None:
                         i_start = int((t_start-sig_t_start).magnitude * sr.magnitude)
-                        if i_start<0:
+                        if i_start < 0:
                             i_start = 0
                         sig_t_start += (i_start/sr).rescale('s')
                     else:
                         i_start = None
                     #print(channel_indexes)
-                    if self.channels_to_load is not None:
-                        channel_indexes = [x-1 for x in self.channels_to_load]
+                    channel_indexes_abs, channel_indexes = compare_channels(channel_indexes, channels_to_load)
+
+
                     raw_signal = self.get_analogsignal_chunk(block_index=block_index, seg_index=seg_index,
-                                i_start=i_start, i_stop=i_stop, channel_indexes=channel_indexes)
-                    if self.channels_to_load is not None:
-                        channel_indexes = np.arange(len(self.channels_to_load))
+                                i_start=i_start, i_stop=i_stop, channel_indexes=channel_indexes_abs)
+                    print("HERE2")
                     float_signal = self.rescale_signal_raw_to_float(raw_signal,  dtype='float32',
                                                                                             channel_indexes=channel_indexes)
+                    #if channels_to_load is not None:
+                    #    channel_indexes = np.asarray([x - 1 for x in channels_to_load])
                 
-                for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_indexes,
+                for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_indexes_abs,
                                                 signal_group_mode=signal_group_mode).items():
                     units = np.unique(signal_channels[ind_abs]['units'])
-                    assert len(units)==1
+                    assert len(units) == 1
                     units = ensure_signal_units(units[0])
                     
                     if signal_group_mode=='split-all':
@@ -340,12 +348,15 @@ class BaseFromRaw(BaseIO):
                         anasig = AnalogSignal(float_signal[:, ind_within], units=units,  copy=False,
                                 sampling_rate=sr, t_start=sig_t_start, **annotations)
                     seg.analogsignals.append(anasig)
+                print("HERE3")
 
                     
         
         #SpikeTrain and waveforms (optional)
         unit_channels = self.header['unit_channels']
-        for unit_index in range(len(unit_channels)):
+        unit_indexes = compare_unit_channels(unit_channels, channels_to_load)
+        #start1 = time.time()
+        for unit_index in unit_indexes:
             if not lazy and load_waveforms:
                 raw_waveforms = self.get_spike_raw_waveforms(block_index=block_index, seg_index=seg_index, 
                                                     unit_index=unit_index, t_start=t_start_, t_stop=t_stop_)
@@ -386,6 +397,8 @@ class BaseFromRaw(BaseIO):
                 sptr.lazy_shape = (nb,)
             
             seg.spiketrains.append(sptr)
+        #stop1 = time.time()
+        #print(stop1 - start1)
         
         # Events/Epoch
         event_channels = self.header['event_channels']
@@ -442,7 +455,7 @@ class BaseFromRaw(BaseIO):
         
         This method aggregate signal channels with same units or split them all.
         """
-        all_channels = self.header['signal_channels']
+        all_channels = self.header['signal_channels']           # TODO: MAYBE INTERVENE HERE ONLY WITH CHANNELS_TO_LOAD
         if channel_indexes is None:
             channel_indexes = np.arange(all_channels.size, dtype=int)
         channels = all_channels[channel_indexes]
@@ -495,3 +508,27 @@ def ensure_second(v):
     elif isinstance(v, int):
         return float(v)*pq.s
 
+def compare_channels(channel_indexes, channels_to_load):
+    # Reduce AnalogSignal channels that will be loaded to the specified channels
+    if channels_to_load is not None and channel_indexes is None:  # TODO: Create own method for this
+        channel_indexes_abs = np.asarray([x - 1 for x in channels_to_load])
+        return channel_indexes_abs, np.arange(len(channel_indexes_abs))
+    elif channels_to_load is not None:
+        channel_indexes_abs = np.asarray([x for x in channel_indexes if x - 1 in channels_to_load])
+        return channel_indexes_abs, np.arange(len(channel_indexes_abs))
+    else:
+        return channel_indexes, channel_indexes
+
+def compare_unit_channels(unit_channels, channels_to_load):
+    # Reduce unit channels to the specified channels
+    if channels_to_load is not None:
+        unit_indexes = []
+        i = 0
+        for x in unit_channels:
+            # Find index of channel from unit_channel
+            if int(x['name'].split('h')[1].split('#')[0]) in channels_to_load:
+                unit_indexes.append(i)
+            i += 1
+        return unit_indexes
+    else:
+        return range(len(unit_channels))
