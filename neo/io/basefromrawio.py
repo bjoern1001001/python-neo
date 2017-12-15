@@ -303,9 +303,13 @@ class BaseFromRaw(BaseIO):
                         sig_t_start += (i_start/sr).rescale('s')
                     else:
                         i_start = None
-                    
+                    #print(channel_indexes)
+                    if self.channels_to_load is not None:
+                        channel_indexes = [x-1 for x in self.channels_to_load]
                     raw_signal = self.get_analogsignal_chunk(block_index=block_index, seg_index=seg_index,
                                 i_start=i_start, i_stop=i_stop, channel_indexes=channel_indexes)
+                    if self.channels_to_load is not None:
+                        channel_indexes = np.arange(len(self.channels_to_load))
                     float_signal = self.rescale_signal_raw_to_float(raw_signal,  dtype='float32',
                                                                                             channel_indexes=channel_indexes)
                 

@@ -129,12 +129,12 @@ class BlackrockRawIO(BaseRawIO):
     rawmode = 'multi-file'
 
     def __init__(self, filename=None, nsx_override=None, nev_override=None,
-                 nsx_to_load=None, verbose=False):
+                 nsx_to_load=None, channels_to_load=None, verbose=False):
         """
         Initialize the BlackrockIO class.
         """
         BaseRawIO.__init__(self)
-
+        self.channels_to_load = channels_to_load
         self.filename = filename
         
         # remove extension from base _filenames
@@ -315,15 +315,18 @@ class BlackrockRawIO(BaseRawIO):
                     ch_name = chan['labels']
                     ch_id = self.__nsx_ext_header[self.nsx_to_load][i]['electrode_id']
                     units = chan['units']
-                sig_dtype = 'int16'
-                #max_analog_val/min_analog_val/max_digital_val/min_analog_val are int16!!!!!
-                #dangarous situation so cast to float everyone
-                gain = (float(chan['max_analog_val']) - float(chan['min_analog_val']))/\
-                                                    (float(chan['max_digital_val']) - float(chan['min_digital_val']))
-                offset = -float(chan['min_digital_val'])*gain + float(chan['min_analog_val'])
-                group_id = 0
-                sig_channels.append((ch_name, ch_id, sig_sampling_rate, sig_dtype, 
+                if self.channels_to_load is None or ch_id in self.channels_to_load:
+                    sig_dtype = 'int16'
+                    #max_analog_val/min_analog_val/max_digital_val/min_analog_val are int16!!!!!
+                    #dangarous situation so cast to float everyone
+                    gain = (float(chan['max_analog_val']) - float(chan['min_analog_val']))/\
+                                                        (float(chan['max_digital_val']) - float(chan['min_digital_val']))
+                    offset = -float(chan['min_digital_val'])*gain + float(chan['min_analog_val'])
+                    group_id = 0
+                    sig_channels.append((ch_name, ch_id, sig_sampling_rate, sig_dtype,
                                                             units, gain, offset,group_id,))
+
+            #print(sig_channels)
             
             #t_start/t_stop for segment are given by nsx limits or nev limits
             self._sigs_t_starts = []
@@ -376,7 +379,7 @@ class BlackrockRawIO(BaseRawIO):
         unit_channels = np.array(unit_channels, dtype=_unit_channel_dtype)
         event_channels = np.array(event_channels, dtype=_event_channel_dtype)
         sig_channels = np.array(sig_channels, dtype=_signal_channel_dtype)
-        
+        #print(sig_channels)
         self.header = {}
         self.header['nb_block'] = 1
         self.header['nb_segment'] = [self._nb_segment]
