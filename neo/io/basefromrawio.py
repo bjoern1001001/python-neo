@@ -140,11 +140,15 @@ class BaseFromRaw(BaseIO):
             channel_index = compare_channels(channel_index, channels_to_load)[0]
             for i, (ind_within, ind_abs) in self._make_signal_channel_subgroups(channel_index, 
                                                         signal_group_mode=signal_group_mode).items():
-                if len(ind_abs) == 1:
-                    index = ind_abs[0]
-                else:
-                    index = ind_abs
-                chidx_annotations = self.raw_annotations['signal_channels'][index]
+                chidx_annotations = {}
+                if signal_group_mode=="split-all":
+                    chidx_annotations = self.raw_annotations['signal_channels'][ind_abs[0]]
+                elif signal_group_mode=="group-by-same-units":
+                    for key in list(self.raw_annotations['signal_channels'][i].keys()):
+                        chidx_annotations[key] = []
+                    for j in ind_abs:
+                        for key in list(self.raw_annotations['signal_channels'][j].keys()):
+                            chidx_annotations[key].append(self.raw_annotations['signal_channels'][j][key])
                 if 'name' in list(chidx_annotations.keys()):
                     chidx_annotations.pop('name')
                 chidx_annotations = check_annotations(chidx_annotations)
