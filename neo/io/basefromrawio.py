@@ -150,8 +150,6 @@ class BaseFromRaw(BaseIO):
                 unit_annotations = self.raw_annotations['unit_channels'][c]
                 unit = Unit(**unit_annotations)
                 channel_index.units.append(unit)
-                channel_index.channel_ids.append(unit_annotations['channel_id'])
-                channel_index.channel_names.append(unit.name)
                 
         elif units_group_mode=='split-all':
             for c in range(len(unit_channels)):
@@ -159,8 +157,7 @@ class BaseFromRaw(BaseIO):
                 unit = Unit(**unit_annotations)
                 channel_index = ChannelIndex(index=np.array([], dtype='i'),
                                         name='ChannelIndex for Unit', description='ChannelIndex for Unit',
-                                            file_origin=unit.file_origin,
-                                             channel_ids=unit_annotations['channel_id'], channel_names=unit.name)
+                                        file_origin=unit.file_origin)
                 channel_index.units.append(unit)
                 bl.channel_indexes.append(channel_index)
         
@@ -168,8 +165,8 @@ class BaseFromRaw(BaseIO):
             #Read the real segment counts
             for seg_index in range(self.segment_count(block_index)):
                 seg =  self.read_segment(block_index=block_index, seg_index=seg_index, 
-                                                                    lazy=lazy, cascade=cascade, signal_group_mode=signal_group_mode,
-                                                                    load_waveforms=load_waveforms)
+                                        lazy=lazy, cascade=cascade, signal_group_mode=signal_group_mode,
+                                        load_waveforms=load_waveforms)
                 bl.segments.append(seg)
                 
         else:
