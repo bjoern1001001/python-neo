@@ -151,6 +151,7 @@ class BaseFromRaw(BaseIO):
                 unit = Unit(**unit_annotations)
                 channel_index.units.append(unit)
                 channel_index.channel_ids.append(unit_annotations['channel_id'])
+                channel_index.channel_names.append(unit.name)
                 
         elif units_group_mode=='split-all':
             for c in range(len(unit_channels)):
@@ -158,8 +159,8 @@ class BaseFromRaw(BaseIO):
                 unit = Unit(**unit_annotations)
                 channel_index = ChannelIndex(index=np.array([], dtype='i'),
                                         name='ChannelIndex for Unit', description='ChannelIndex for Unit',
-                                            file_origin=unit_annotations['file_origin'],
-                                             channel_ids=unit_annotations['channel_id'])
+                                            file_origin=unit.file_origin,
+                                             channel_ids=unit_annotations['channel_id'], channel_names=unit.name)
                 channel_index.units.append(unit)
                 bl.channel_indexes.append(channel_index)
         
