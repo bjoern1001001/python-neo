@@ -406,6 +406,7 @@ class BlackrockRawIO(BaseRawIO):
                             c, sig_channels['id'][c], sig_channels['name'][c], self.nsx_to_load)
                 anasig_an['description'] = desc
                 anasig_an['file_origin'] = self.filename+'.ns'+str(self.nsx_to_load)
+                anasig_an['nsx'] = self.nsx_to_load
             
             for c in range(unit_channels.size):
                 channel_id, unit_id = self.internal_unit_ids[c]
