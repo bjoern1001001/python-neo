@@ -275,7 +275,11 @@ class BaseFromRaw(BaseIO):
             #new spiketrain limits
             seg_t_start = t_start
             seg_t_stop = t_stop
-            
+
+        if seg.description is None:
+            desc_start = seg_t_start if t_start_ is None else max(t_start_, seg_t_start)
+            desc_stop = seg_t_stop if t_stop_ is None else min(t_stop_, seg_t_stop)
+            seg.description = "Segment containing data from {} s to {} s.".format(desc_start, desc_stop)
         
         #AnalogSignal
         signal_channels = self.header['signal_channels']
