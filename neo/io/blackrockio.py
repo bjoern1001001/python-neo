@@ -36,12 +36,34 @@ class BlackrockIO():
                                                        load_waveforms=load_waveforms, time_slices=time_slices))
         return self.combine_blocks(all_blocks)
 
-
     def combine_blocks(self, all_blocks):
-        pass
+        # Note: Everything is loaded with the same parameters //and files have same structure,
+        # thus the following is possible.
+        # TODO: Do all t_starts and t_stops and time values fit correctly???
+        for i in range(1, len(all_blocks)):
+            unit_index = 0
+            for chidx in all_blocks[i].channel_indexes:
+                if chidx.name == 'ChannelIndex for Unit':
+                    break
+                c = -1
+                if chidx.analogsignals:
+                    for a, main_chidx in enumerate(all_blocks[0].channel_indexes):
+                        if main_chidx.name == chidx.name:
+                            c = a
+                            break
+                    if c == -1:
+                        all_blocks[0].channel_indexes.insert(0, chidx)
+                    else:
+                        # print(all_blocks[0].channel_indexes[c].analogsignals)
+                        all_blocks[0].channel_indexes[c].analogsignals.extend(chidx.analogsignals)
+                print(c)
+            # TODO: Really all Segments corresponding correctly? Should be if no error is raised.
 
+            for seg_ind, seg in enumerate(all_blocks[i].segments):
+                all_blocks[0].segments[seg_ind].analogsignals.extend(seg.analogsignals)
+                all_blocks[0].segments[seg_ind].epochs.extend(seg.epochs)
 
-
+        return all_blocks[0]
 
     class SingleBlackrockIO(BlackrockRawIO, BaseFromRaw):
     
