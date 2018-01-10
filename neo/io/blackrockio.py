@@ -28,7 +28,7 @@ class BlackrockIO:
             nsx_to_load = list(self._instances)
         elif not isinstance(nsx_to_load, list):
             raise ValueError("nsx_to_load should be 'all' or of type int or list")
-
+        nsx_to_load.sort(reverse=True)  # TODO: PROBLEM WITH SPIKETRAIN TIMES, CHECK MY IMPLEMENTATION
         all_blocks = []
         for nsx_val in nsx_to_load:
             all_blocks.append(self._instances[nsx_val].read_block(block_index=block_index, lazy=lazy, cascade=cascade,
@@ -42,7 +42,7 @@ class BlackrockIO:
         # Note: Everything is loaded with the same parameters //and files have same structure,
         # thus the following is possible.
         # TODO: Do all t_starts and t_stops and time values fit correctly???
-        # TODO: Check if upwards connection is correct everywhere!!!
+        # //TODO: Check if upwards connection is correct everywhere!!! Should be okay!
         for i in range(1, len(all_blocks)):
             for chidx in all_blocks[i].channel_indexes:
                 if chidx.name == 'ChannelIndex for Unit':
@@ -60,11 +60,13 @@ class BlackrockIO:
                         all_blocks[0].channel_indexes[c].analogsignals.extend(chidx.analogsignals)
                 print(c)
             # TODO: Really all Segments corresponding correctly? Should be if no error is raised.
-            # TODO: PROBLEM: Anasigs (and, if added, Epochs) don't point to correct parents!!!!
+            # => Look at t_starts and t_stops
+            # //TODO: Check if create_many_to_one_relationship is the correct way here, seems to work
+            # TODO: SpikeTrain needs to be with highest possible (30000) precision all the time?
             for seg_ind, seg in enumerate(all_blocks[i].segments):
                 all_blocks[0].segments[seg_ind].analogsignals.extend(seg.analogsignals)
                 all_blocks[0].segments[seg_ind].epochs.extend(seg.epochs)
-
+        all_blocks[0].create_many_to_one_relationship(force=True)
         return all_blocks[0]
 
     class SingleBlackrockIO(BlackrockRawIO, BaseFromRaw):
