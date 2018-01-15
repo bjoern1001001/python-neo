@@ -2,8 +2,6 @@
 
 import os
 
-import time
-
 from neo.io.basefromrawio import BaseFromRaw
 from neo.rawio.blackrockrawio import BlackrockRawIO
 
@@ -48,13 +46,13 @@ class BlackrockIO:
         elif nsx_to_load == 'min_res' or 'smallest' or 'fastest':
             # A lot of overhead here, but searching nsX should not be implemented twice
             # TODO: Find available nsX on this level already and pass it down??? But RawIO also needs this functionality
+            nsx_to_load = []
             for i in range(1, 7):
                 try:
                     self._instances[i] = self.SingleBlackrockIO(filename, nsx_to_load=i, **kargs)
                     break
                 except KeyError:
                     pass
-            nsx_to_load = []
 
         elif isinstance(nsx_to_load, int):
             nsx_to_load = [nsx_to_load]
@@ -105,6 +103,7 @@ class BlackrockIO:
         nsx_to_load.sort(reverse=True)
         # TODO: Note on SpikeTrain t_start and t_stop not exact
         # (rather be sure there was measurement at this time than vaguely adding a bit more information)
+
         all_blocks = []
         for nsx_val in nsx_to_load:
             all_blocks.append(self._instances[nsx_val].read_block(block_index=block_index, lazy=lazy, cascade=cascade,
@@ -129,28 +128,21 @@ class BlackrockIO:
 
         for i in range(1, len(all_blocks)):
             for chidx in all_blocks[i].channel_indexes:
+
                 # TODO: Maybe not general enough, but what other criteria exist?  #####################################
                 if chidx.name == 'ChannelIndex for Unit':
                     break
                 # c = -1
+
                 try:
                     # Find corresponding ChannelIndex in 1st block
                     c = [main_chidx.name for main_chidx in all_blocks[0].channel_indexes].index(chidx.name)
                     # Transfer AnalogSignals to this ChannelIndex
                     all_blocks[0].channel_indexes[c].analogsignals.extend(chidx.analogsignals)
+
                 except ValueError:
                     # If it does not yet exist, add ChannelIndex to 1st block
                     all_blocks[0].channel_indexes.insert(0, chidx)
-                """if chidx.analogsignals:          # This code has been replaced by a list comprehension
-                    for a, main_chidx in enumerate(all_blocks[0].channel_indexes):
-                        if main_chidx.name == chidx.name:
-                            c = a
-                            break
-                    if c == -1:
-                        all_blocks[0].channel_indexes.insert(0, chidx)
-                    else:
-                        # print(all_blocks[0].channel_indexes[c].analogsignals)
-                        all_blocks[0].channel_indexes[c].analogsignals.extend(chidx.analogsignals)"""
 
             # TODO: Really all Segments corresponding correctly? Should be if no error is raised.
             # => Look at t_starts and t_stops
