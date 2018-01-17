@@ -15,6 +15,7 @@ import numpy as np
 import quantities as pq
 
 from neo.core.baseneo import BaseNeo, merge_annotations
+from neo.core.DataObject import DataObject
 
 PY_VER = sys.version_info[0]
 
@@ -29,7 +30,7 @@ def _new_epoch(cls, times=None, durations=None, labels=None, units=None,
     e.segment = segment
     return e
 
-class Epoch(BaseNeo, pq.Quantity):
+class Epoch(BaseNeo, DataObject):
     '''
     Array of epochs.
 

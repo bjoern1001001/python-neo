@@ -25,11 +25,12 @@ import quantities as pq
 
 from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
 from neo.core.channelindex import ChannelIndex
+from neo.core.DataObject import DataObject
 
 logger = logging.getLogger("Neo")
 
 
-class BaseSignal(BaseNeo, pq.Quantity):
+class BaseSignal(BaseNeo, DataObject):
     '''
     This is the base class from which all signal objects inherit:
     :class:`AnalogSignal` and :class:`IrregularlySampledSignal`.

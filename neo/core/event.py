@@ -15,6 +15,7 @@ import numpy as np
 import quantities as pq
 
 from neo.core.baseneo import BaseNeo, merge_annotations
+from neo.core.DataObject import DataObject
 
 PY_VER = sys.version_info[0]
 
@@ -30,7 +31,7 @@ def _new_event(cls, signal, times = None, labels=None, units=None, name=None,
     e.segment = segment
     return e
 
-class Event(BaseNeo, pq.Quantity):
+class Event(BaseNeo, DataObject):
     '''
     Array of events.
 

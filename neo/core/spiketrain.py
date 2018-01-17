@@ -26,6 +26,7 @@ import copy
 import numpy as np
 import quantities as pq
 from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
+from neo.core.DataObject import DataObject
 
 
 def check_has_dimensions_time(*values):
@@ -109,7 +110,7 @@ def _new_spiketrain(cls, signal, t_stop, units=None, dtype=None,
     return obj
 
 
-class SpikeTrain(BaseNeo, pq.Quantity):
+class SpikeTrain(BaseNeo, DataObject):
     '''
     :class:`SpikeTrain` is a :class:`Quantity` array of spike times.
 
