@@ -30,7 +30,7 @@ from neo.core.DataObject import DataObject
 logger = logging.getLogger("Neo")
 
 
-class BaseSignal(BaseNeo, DataObject):
+class BaseSignal(DataObject):
     '''
     This is the base class from which all signal objects inherit:
     :class:`AnalogSignal` and :class:`IrregularlySampledSignal`.

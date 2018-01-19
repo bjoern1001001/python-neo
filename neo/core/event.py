@@ -31,7 +31,7 @@ def _new_event(cls, signal, times = None, labels=None, units=None, name=None,
     e.segment = segment
     return e
 
-class Event(BaseNeo, DataObject):
+class Event(DataObject):
     '''
     Array of events.
 

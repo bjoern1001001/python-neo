@@ -30,7 +30,7 @@ def _new_epoch(cls, times=None, durations=None, labels=None, units=None,
     e.segment = segment
     return e
 
-class Epoch(BaseNeo, DataObject):
+class Epoch(DataObject):
     '''
     Array of epochs.
 

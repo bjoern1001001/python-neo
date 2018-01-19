@@ -110,7 +110,7 @@ def _new_spiketrain(cls, signal, t_stop, units=None, dtype=None,
     return obj
 
 
-class SpikeTrain(BaseNeo, DataObject):
+class SpikeTrain(DataObject):
     '''
     :class:`SpikeTrain` is a :class:`Quantity` array of spike times.
 
