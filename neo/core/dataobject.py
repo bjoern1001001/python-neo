@@ -28,9 +28,6 @@ class DataObject(BaseNeo, pq.Quantity):
             except IndexError:
                 own_length = 1
 
-            # if isinstance(value, np.ndarray) and len(value.shape>1):  # Should be covered by iterating through array
-            #     raise ValueError()
-
             # Escape check if empty array or list
             if len(value) == 0:
                 val_length = own_length
@@ -49,9 +46,20 @@ class DataObject(BaseNeo, pq.Quantity):
                 BaseNeo._check_annotations(self, value)
 
             if isinstance(value, list):
-                value = np.ndarray(value)
+                value = np.array(value)
 
         return value
+
+    def annotations_at_index(self, index):  # TODO: Should they be sorted by key (current) or index?
+
+        index_annotations = {}
+
+        # Use what is given as an index to determine the corresponding annotations,
+        # if not possible, numpy raises an Error
+        for ann in self.annotations.keys():
+            index_annotations[ann] = self.annotations[ann][index]
+
+        return index_annotations
 
     def as_array(self, units=None):
         """
