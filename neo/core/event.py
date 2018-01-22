@@ -15,7 +15,7 @@ import numpy as np
 import quantities as pq
 
 from neo.core.baseneo import BaseNeo, merge_annotations
-from neo.core.DataObject import DataObject
+from neo.core.dataobject import DataObject
 
 PY_VER = sys.version_info[0]
 

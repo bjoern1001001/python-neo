@@ -10,18 +10,18 @@ class DataObject(BaseNeo, pq.Quantity):
 
     def _check_annotations(self, value):
         for key in value:
-            #if not isinstance(value[key], (list, np.ndarray)):
-            #    raise ValueError("Annotations need to be a list or an array")
-            #try:
-            #    length = self.shape[1]
-            #except IndexError:
-            #    length = 1
-            #if not length == len(value[key]):
-            #   raise ValueError("Incorrect length of array annotation")
-            #for a in value[key]:
-             #   if isinstance(a, np.ndarray):
-              #      raise ValueError("")    # TODO: Should annotations only be 1-dimensional?
-                BaseNeo._check_annotations(self, value[key])
+            if not isinstance(value[key], (list, np.ndarray)):
+                raise ValueError("Annotations need to be a list or an array")
+            try:
+                length = self.shape[1]
+            except IndexError:
+                length = 1
+            if not length == len(value[key]):
+                raise ValueError("Incorrect length of array annotation")
+            for a in value[key]:
+                if isinstance(a, np.ndarray):
+                    raise ValueError("")    # TODO: Should annotations only be 1-dimensional?
+            BaseNeo._check_annotations(self, value[key])
 
     def as_array(self, units=None):
         """

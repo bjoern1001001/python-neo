@@ -26,7 +26,7 @@ import copy
 import numpy as np
 import quantities as pq
 from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
-from neo.core.DataObject import DataObject
+from neo.core.dataobject import DataObject
 
 
 def check_has_dimensions_time(*values):

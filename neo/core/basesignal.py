@@ -25,7 +25,7 @@ import quantities as pq
 
 from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
 from neo.core.channelindex import ChannelIndex
-from neo.core.DataObject import DataObject
+from neo.core.dataobject import DataObject
 
 logger = logging.getLogger("Neo")
 
