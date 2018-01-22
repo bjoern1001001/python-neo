@@ -26,6 +26,7 @@ import copy
 import numpy as np
 import quantities as pq
 from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
+from neo.core.dataobject import DataObject
 
 
 def check_has_dimensions_time(*values):
@@ -109,7 +110,7 @@ def _new_spiketrain(cls, signal, t_stop, units=None, dtype=None,
     return obj
 
 
-class SpikeTrain(BaseNeo, pq.Quantity):
+class SpikeTrain(DataObject):
     '''
     :class:`SpikeTrain` is a :class:`Quantity` array of spike times.
 
@@ -697,20 +698,3 @@ class SpikeTrain(BaseNeo, pq.Quantity):
         if self.left_sweep is None or dur is None:
             return None
         return self.left_sweep + dur
-
-    def as_array(self, units=None):
-        """
-        Return the spike times as a plain NumPy array.
-
-        If `units` is specified, first rescale to those units.
-        """
-        if units:
-            return self.rescale(units).magnitude
-        else:
-            return self.magnitude
-
-    def as_quantity(self):
-        """
-        Return the spike times as a quantities array.
-        """
-        return self.view(pq.Quantity)

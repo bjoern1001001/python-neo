@@ -16,6 +16,7 @@ import numpy as np
 import quantities as pq
 
 from neo.core.baseneo import BaseNeo, merge_annotations
+from neo.core.dataobject import DataObject
 
 PY_VER = sys.version_info[0]
 
@@ -32,7 +33,7 @@ def _new_event(cls, signal, times = None, labels=None, units=None, name=None,
     return e
 
 
-class Event(BaseNeo, pq.Quantity):
+class Event(DataObject):
     '''
     Array of events.
 
@@ -221,20 +222,3 @@ class Event(BaseNeo, pq.Quantity):
         new_evt = self[indices]
 
         return new_evt
-
-    def as_array(self, units=None):
-        """
-        Return the event times as a plain NumPy array.
-
-        If `units` is specified, first rescale to those units.
-        """
-        if units:
-            return self.rescale(units).magnitude
-        else:
-            return self.magnitude
-
-    def as_quantity(self):
-        """
-        Return the event times as a quantities array.
-        """
-        return self.view(pq.Quantity)

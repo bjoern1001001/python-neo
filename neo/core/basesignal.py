@@ -23,13 +23,14 @@ import logging
 import numpy as np
 import quantities as pq
 
-from neo.core.baseneo import BaseNeo, MergeError, merge_annotations
+from neo.core.baseneo import MergeError, merge_annotations
+from neo.core.dataobject import DataObject
 from neo.core.channelindex import ChannelIndex
 
 logger = logging.getLogger("Neo")
 
 
-class BaseSignal(BaseNeo, pq.Quantity):
+class BaseSignal(DataObject):
     '''
     This is the base class from which all signal objects inherit:
     :class:`AnalogSignal` and :class:`IrregularlySampledSignal`.
@@ -222,23 +223,6 @@ class BaseSignal(BaseNeo, pq.Quantity):
 
     __radd__ = __add__
     __rmul__ = __sub__
-
-    def as_array(self, units=None):
-        """
-        Return the signal as a plain NumPy array.
-
-        If `units` is specified, first rescale to those units.
-        """
-        if units:
-            return self.rescale(units).magnitude
-        else:
-            return self.magnitude
-
-    def as_quantity(self):
-        """
-        Return the signal as a quantities array.
-        """
-        return self.view(pq.Quantity)
 
     def merge(self, other):
         '''

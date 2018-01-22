@@ -39,27 +39,6 @@ class MergeError(Exception):
     pass
 
 
-def _check_annotations(value):
-    """
-    Recursively check that value is either of a "simple" type (number, string,
-    date/time) or is a (possibly nested) dict, list or numpy array containing
-    only simple types.
-    """
-    if isinstance(value, np.ndarray):
-        if not issubclass(value.dtype.type, ALLOWED_ANNOTATION_TYPES):
-            raise ValueError("Invalid annotation. NumPy arrays with dtype %s"
-                             "are not allowed" % value.dtype.type)
-    elif isinstance(value, dict):
-        for element in value.values():
-            _check_annotations(element)
-    elif isinstance(value, (list, tuple)):
-        for element in value:
-            _check_annotations(element)
-    elif not isinstance(value, ALLOWED_ANNOTATION_TYPES):
-        raise ValueError("Invalid annotation. Annotations of type %s are not"
-                         "allowed" % type(value))
-
-
 def merge_annotation(a, b):
     """
     First attempt at a policy for merging annotations (intended for use with
@@ -266,7 +245,7 @@ class BaseNeo(object):
         :class:`BaseNeo` or the child class.
         """
         # create `annotations` for additional arguments
-        _check_annotations(annotations)
+        annotations = self._check_annotations(annotations)
         self.annotations = annotations
 
         # these attributes are recommended for all objects.
@@ -280,6 +259,27 @@ class BaseNeo(object):
         for parent in self._multi_parent_containers:
             setattr(self, parent, [])
 
+    def _check_annotations(self, value):
+        """
+        Recursively check that value is either of a "simple" type (number, string,
+        date/time) or is a (possibly nested) dict, list or numpy array containing
+        only simple types.
+        """
+        if isinstance(value, np.ndarray):
+            if not issubclass(value.dtype.type, ALLOWED_ANNOTATION_TYPES):
+                raise ValueError("Invalid annotation. NumPy arrays with dtype %s"
+                                 "are not allowed" % value.dtype.type)
+        elif isinstance(value, dict):
+            for element in value.values():
+                self._check_annotations(element)
+        elif isinstance(value, (list, tuple)):
+            for element in value:
+                self._check_annotations(element)
+        elif not isinstance(value, ALLOWED_ANNOTATION_TYPES):
+            raise ValueError("Invalid annotation. Annotations of type %s are not"
+                             "allowed" % type(value))
+        return value
+
     def annotate(self, **annotations):
         """
         Add annotations (non-standardized metadata) to a Neo object.
@@ -290,7 +290,7 @@ class BaseNeo(object):
         >>> obj.key2
         value2
         """
-        _check_annotations(annotations)
+        annotations = self._check_annotations(annotations)
         self.annotations.update(annotations)
 
     def _has_repr_pretty_attrs_(self):

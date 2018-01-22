@@ -16,6 +16,7 @@ import numpy as np
 import quantities as pq
 
 from neo.core.baseneo import BaseNeo, merge_annotations
+from neo.core.dataobject import DataObject
 
 PY_VER = sys.version_info[0]
 
@@ -30,7 +31,7 @@ def _new_epoch(cls, times=None, durations=None, labels=None, units=None,
     e.segment = segment
     return e
 
-class Epoch(BaseNeo, pq.Quantity):
+class Epoch(DataObject):
     '''
     Array of epochs.
 
@@ -234,20 +235,3 @@ class Epoch(BaseNeo, pq.Quantity):
         new_epc.durations = self.durations[indices]
         new_epc.labels = self.labels[indices]
         return new_epc
-
-    def as_array(self, units=None):
-        """
-        Return the epoch start times as a plain NumPy array.
-
-        If `units` is specified, first rescale to those units.
-        """
-        if units:
-            return self.rescale(units).magnitude
-        else:
-            return self.magnitude
-
-    def as_quantity(self):
-        """
-        Return the epoch start times as a quantities array.
-        """
-        return self.view(pq.Quantity)
