@@ -10,6 +10,7 @@ This module defines :class:`Event`, an array of events.
 from __future__ import absolute_import, division, print_function
 
 import sys
+from copy import deepcopy
 
 import numpy as np
 import quantities as pq
@@ -31,7 +32,9 @@ def _new_event(cls, signal, times = None, labels=None, units=None, name=None,
     e.segment = segment
     return e
 
+
 class Event(DataObject):
+
     '''
     Array of events.
 
@@ -177,6 +180,21 @@ class Event(DataObject):
         for attr in ("labels", "name", "file_origin", "description",
                      "annotations"):
             setattr(self, attr, getattr(other, attr, None))
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new_ev = cls(times=self.times,
+                     labels=self.labels, units=self.units,
+                     name=self.name, description=self.description, 
+                     file_origin=self.file_origin)
+        new_ev.__dict__.update(self.__dict__)
+        memo[id(self)] = new_ev
+        for k, v in self.__dict__.items():
+            try:
+                setattr(new_ev, k, deepcopy(v, memo))
+            except TypeError:
+                setattr(new_ev, k, v)
+        return new_ev
 
     def duplicate_with_new_data(self, signal):
         '''
