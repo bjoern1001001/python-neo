@@ -8,6 +8,8 @@ from neo.core.baseneo import BaseNeo
 
 class DataObject(BaseNeo, pq.Quantity):
 
+    array_annotations = {}      # TODO: THIS IS THE CORRECT WAY!!!!
+
     def _check_annotations(self, value):        # TODO: Is there anything else that can be checked here?
 
         # First stage, resolve dict of annotations into single annotations
