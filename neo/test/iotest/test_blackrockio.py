@@ -53,7 +53,9 @@ class CommonTests(BaseTestIO, unittest.TestCase):
         'blackrock_2_1/l101210-001.ns2',
         'blackrock_2_1/l101210-001.ns5',
         'blackrock_2_1/l101210-001.nev',
-        'blackrock_2_1/l101210-001-02.nev']
+        'blackrock_2_1/l101210-001-02.nev',
+        'multi_seg/multi_seg.ns2',
+        'multi_seg/multi_seg.nev']
 
     ioclass = BlackrockIO
 
@@ -111,6 +113,89 @@ class CommonTests(BaseTestIO, unittest.TestCase):
 
         anasig = block.segments[0].analogsignals[0]
         self.assertIsNotNone(anasig.file_origin)
+
+    def test_multiple_segments(self):
+        filename = self.get_filename_path('multi_seg/multi_seg')
+        reader = BlackrockIO(filename=filename, nsx_to_load=2)
+
+        block = reader.read_block()
+        segs = block.list_children_by_class('Segment')
+        self.assertEqual(len(segs), 2)
+
+        self.assertEqual(segs[0].t_start, 0 * pq.s)
+        # TODO: Need to take timestamp resolution into account. t_start should be at 0.001/30 sec
+        self.assertEqual(segs[1].t_start, 0.001 * pq.s)
+
+        self.assertEqual(segs[0].t_stop, 3.636 * pq.s)
+        # TODO: Is this correct?
+        self.assertEqual(segs[1].t_stop, 29.09 * pq.s)
+
+        self.assertEqual(len(segs[0].analogsignals), len(segs[1].analogsignals))
+        self.assertEqual(len(segs[0].analogsignals), 16)
+
+        self.assertEqual(segs[0].analogsignals[0].t_start, segs[0].t_start)
+        self.assertEqual(segs[1].analogsignals[0].t_start, segs[1].t_start)
+
+        self.assertEqual(segs[0].analogsignals[0].t_stop, segs[0].t_stop)
+        self.assertEqual(segs[1].analogsignals[0].t_stop, segs[1].t_stop)
+
+        self.assertEqual(len(segs[0].spiketrains), len(segs[1].spiketrains))
+        # TODO: Make sure this number is really correct
+        self.assertEqual(len(segs[0].spiketrains), 167)
+
+        self.assertEqual(len(segs[0].events), len(segs[1].events))
+        self.assertEqual(len(segs[0].events), 2)
+
+        # TODO: Later more tests will be required, see below for details
+        # - Events and SpikeTrains are not identical / split up (cut them!!!) between segments
+        # - Segments contain only data objects in their time range
+        # - Segments do not overlap (segs[1].t_start > segs[0].t_stop)
+        # - SpikeTrains are cut correctly, so every SpikeTrain is sorted (Events too!)
+        # - Grouping across Segments with ChannelIndex
+
+
+        # self.assertFalse((segs[0].events[0] == segs[1].events[0]).any)
+        # self.assertFalse((segs[0].spiketrains[0] == segs[1].spiketrains[0]).any)
+
+        # for sptr in segs[0].spiketrains:
+        #     self.assertGreaterEqual(sptr.t_start, segs[0].t_start)
+        #     self.assertLessEqual(sptr.t_stop, segs[0].t_stop)
+        #
+        # for sig in segs[0].analogsignals:
+        #     self.assertGreaterEqual(sig.t_start, segs[0].t_start)
+        #     self.assertLessEqual(sig.t_stop, segs[0].t_stop)
+        #
+        # for ev in segs[0].events:
+        #     self.assertGreaterEqual(ev.t_start, segs[0].t_start)
+        #     self.assertLessEqual(ev.t_stop, segs[0].t_stop)
+
+        # self.assertGreater(segs[1].t_start, segs[0].t_stop)
+
+        # for sptr in segs[0].spiketrains:
+        #     tr1 = sptr.copy()
+        #     tr1.sort()
+        #     self.assertTrue((tr1 == sptr).all)
+
+        # for sptr in segs[0].spiketrains:
+        #     tr1 = sptr.copy()
+        #     tr1.sort()
+        #     self.assertTrue((tr1 == sptr).all)
+
+        # for ev in segs[0].events:
+        #     ev1 = ev.copy()
+        #     times = ev1.times.sort()
+        #     self.assertTrue((ev.times == times).all)
+
+        # chidxes = block.list_children_by_class('ChannelIndex')
+        # for chidx in chidxes:
+        #     if chidx.analogsignals:
+        #         name = chidx.analogsignals[0].name
+        #         for sig in chidx.analogsignals:
+        #             self.assertEqual(sig.name, name)
+        # self.assertEqual(chidxes[0].analogsignals[0].name, chidxes[0].analogsignals[1].name)
+        # self.assertEqual(chidxes[0].analogsignals[0].name, 'EyeXcm')
+        # self.assertNotEqual(chidxes[0].analogsignals[0].segment,
+        #                     chidxes[0].analogsignals[1].segment)
 
     def test_inputs_V21(self):
         """
