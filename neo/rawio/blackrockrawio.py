@@ -341,14 +341,16 @@ class BlackrockRawIO(BaseRawIO):
             self._sigs_t_starts = []
             self._seg_t_starts, self._seg_t_stops = [], []
             for data_bl in range(self._nb_segment):
-                length = self.nsx_data[data_bl].shape[0]
+                length = self.nsx_data[data_bl].shape[0]    # TODO: MAYBE NOT?
+                print(length)
                 if self.__nsx_data_header[self.nsx_to_load] is None:
                     t_start = 0.
                 else:
                     t_start = self.__nsx_data_header[self.nsx_to_load][data_bl]['timestamp'] / \
                         sig_sampling_rate
+                    print(self.__nsx_data_header[self.nsx_to_load][data_bl]['timestamp'])
                 t_stop = t_start + length / sig_sampling_rate
-                if self._avail_files['nev']:
+                if self._avail_files['nev'] and False:
                     max_nev_time = 0
                     for k, data in self.nev_data.items():
                         if data.size > 0:
@@ -368,6 +370,7 @@ class BlackrockRawIO(BaseRawIO):
                 self._seg_t_starts.append(t_start)
                 self._seg_t_stops.append(float(t_stop))
                 self._sigs_t_starts.append(float(t_start))
+            print(self._seg_t_stops)
 
         else:
             # not signal at all so 1 segment
@@ -843,8 +846,15 @@ class BlackrockRawIO(BaseRawIO):
         if offset is None:
             offset = self.__nsx_basic_header[nsx_nb]['bytes_in_headers']
 
+        print("HERE")
+
         while offset < filesize:
             dh = self.__read_nsx_dataheader(nsx_nb, offset)
+            print(dh['header'])
+            print("TIMESTAMP")
+            print(dh['timestamp'])
+            print("NUMBER OF DATA POINTS")
+            print(dh['nb_data_points'])
             data_header[index] = {
                 'header': dh['header'],
                 'timestamp': dh['timestamp'],
@@ -855,6 +865,8 @@ class BlackrockRawIO(BaseRawIO):
             # use of `int` avoids overflow problem
             data_size = int(dh['nb_data_points']) * \
                 int(self.__nsx_basic_header[nsx_nb]['channel_count']) * 2
+            print("CHANNEL COUNT")
+            print(self.__nsx_basic_header[nsx_nb]['channel_count'])
             # define new offset (to possible next data block)
             offset = data_header[index]['offset_to_data_block'] + data_size
 
@@ -894,6 +906,7 @@ class BlackrockRawIO(BaseRawIO):
             shape = (
                 self.__nsx_data_header[nsx_nb][data_bl]['nb_data_points'],
                 self.__nsx_basic_header[nsx_nb]['channel_count'])
+            print(self.__nsx_basic_header[nsx_nb]['timestamp_resolution'])
             offset = \
                 self.__nsx_data_header[nsx_nb][data_bl]['offset_to_data_block']
 
@@ -939,6 +952,10 @@ class BlackrockRawIO(BaseRawIO):
             ('nb_ext_headers', 'uint32')]
 
         nev_basic_header = np.fromfile(filename, count=1, dtype=dt0)[0]
+        print("TIME")
+        print(nev_basic_header['minute'])
+        print(nev_basic_header['second'])
+        print(nev_basic_header['millisecond'])
 
         # extended header
         # this consist in N block with code 8bytes + 24 data bytes
