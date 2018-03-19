@@ -353,7 +353,7 @@ class BlackrockRawIO(BaseRawIO):
                     t_start = 0.
                 else:
                     t_start = self.__nsx_data_header[self.nsx_to_load][data_bl]['timestamp'] / \
-                        sig_sampling_rate
+                        self.__nsx_basic_header[self.nsx_to_load]['timestamp_resolution']
                 t_stop = t_start + length / sig_sampling_rate
                 if self._avail_files['nev']:
                     max_nev_time = 0
@@ -783,6 +783,7 @@ class BlackrockRawIO(BaseRawIO):
             ('channel_count', 'uint32')]
 
         nsx_basic_header = np.fromfile(filename, count=1, dtype=dt0)[0]
+        print(nsx_basic_header['hour'], "  ", nsx_basic_header['minute'], "  ", nsx_basic_header['second'], "  ", nsx_basic_header['millisecond'])
 
         # extended header (type: CC)
         offset_dt0 = np.dtype(dt0).itemsize
