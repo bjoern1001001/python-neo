@@ -783,6 +783,7 @@ class BlackrockRawIO(BaseRawIO):
             ('channel_count', 'uint32')]
 
         nsx_basic_header = np.fromfile(filename, count=1, dtype=dt0)[0]
+        print("NSX", filename)
         print(nsx_basic_header['hour'], "  ", nsx_basic_header['minute'], "  ", nsx_basic_header['second'], "  ", nsx_basic_header['millisecond'])
 
         # extended header (type: CC)
