@@ -95,13 +95,13 @@ class Spike2RawIO(BaseRawIO):
         self._memmap = np.memmap(self.filename, dtype='u1', offset=0, mode='r')
         self._all_data_blocks = {}
         self._by_seg_data_blocks = {}
-        for c, chan_info in enumerate(self._channel_infos):
+        for chan_id, chan_info in enumerate(self._channel_infos):
             data_blocks = []
             ind = chan_info['firstblock']
             for b in range(chan_info['blocks']):
                 block_info = self._memmap[ind:ind + 20].view(blockHeaderDesciption)[0]
-                data_blocks.append((ind, block_info['items'], 0, 
-                            block_info['start_time'], block_info['end_time']))
+                data_blocks.append((ind, block_info['items'], 0,
+                                    block_info['start_time'], block_info['end_time']))
                 ind = block_info['succ_block']
 
             data_blocks = np.array(data_blocks, dtype=[(
@@ -109,23 +109,24 @@ class Spike2RawIO(BaseRawIO):
                 ('start_time', 'int32'), ('end_time', 'int32')])
             data_blocks['pos'] += 20  # 20 is ths header size
 
-            self._all_data_blocks[c] = data_blocks
-            self._by_seg_data_blocks[c] = []
-        
+            self._all_data_blocks[chan_id] = data_blocks
+            self._by_seg_data_blocks[chan_id] = []
+
         # For all signal channel detect gaps between data block (pause in rec) so new Segment.
         # then check that all channel have the same gaps.
         # this part is tricky because we need to check that all channel have same pause.
         all_gaps_block_ind = {}
-        for c, chan_info in enumerate(self._channel_infos):
+        for chan_id, chan_info in enumerate(self._channel_infos):
             if chan_info['kind'] in [1, 9]:
-                data_blocks = self._all_data_blocks[c]
+                data_blocks = self._all_data_blocks[chan_id]
                 sig_size = np.sum(self._all_data_blocks[chan_id]['size'])
-                if sig_size>0:
-                    sample_interval = chan_info['divide'] * info['time_per_adc']
+                if sig_size > 0:
+                    interval = get_sample_interval(info, chan_info) / self._time_factor
                     # detect gaps
-                    inter_block_sizes = data_blocks['start_time'][1:] - data_blocks['end_time'][:-1]
-                    gaps_block_ind, = np.nonzero(inter_block_sizes>sample_interval)
-                    all_gaps_block_ind[c] = gaps_block_ind
+                    inter_block_sizes = data_blocks['start_time'][1:] - \
+                        data_blocks['end_time'][:-1]
+                    gaps_block_ind, = np.nonzero(inter_block_sizes > interval)
+                    all_gaps_block_ind[chan_id] = gaps_block_ind
 
         # find t_start/t_stop for each seg based on gaps indexe
         self._sig_t_starts = {}
@@ -139,50 +140,51 @@ class Spike2RawIO(BaseRawIO):
                 data_blocks = self._all_data_blocks[chan_id]
                 if data_blocks.size > 0:
                     # if t_start is None or data_blocks[0]['start_time']<t_start:
-                        # t_start = data_blocks[0]['start_time']
-                    if t_stop is None or data_blocks[-1]['end_time']>t_stop:
+                    # t_start = data_blocks[0]['start_time']
+                    if t_stop is None or data_blocks[-1]['end_time'] > t_stop:
                         t_stop = data_blocks[-1]['end_time']
             # self._seg_t_starts = [t_start]
             self._seg_t_starts = [0]
             self._seg_t_stops = [t_stop]
         else:
-            all_nb_seg = np.array([v.size+1 for v in all_gaps_block_ind.values()])
-            assert np.all(all_nb_seg[0]==all_nb_seg), \
-                            'Signal channel have differents pause so diffrents nb_segment'
+            all_nb_seg = np.array([v.size + 1 for v in all_gaps_block_ind.values()])
+            assert np.all(all_nb_seg[0] == all_nb_seg), \
+                'Signal channel have differents pause so diffrents nb_segment'
             nb_segment = int(all_nb_seg[0])
-            
+
             for chan_id, gaps_block_ind in all_gaps_block_ind.items():
                 data_blocks = self._all_data_blocks[chan_id]
                 self._sig_t_starts[chan_id] = []
                 self._sig_t_stops[chan_id] = []
-                
+
                 for seg_ind in range(nb_segment):
-                    if seg_ind==0:
+                    if seg_ind == 0:
                         fisrt_bl = 0
                     else:
-                        fisrt_bl = gaps_block_ind[seg_ind-1] + 1
+                        fisrt_bl = gaps_block_ind[seg_ind - 1] + 1
                     self._sig_t_starts[chan_id].append(data_blocks[fisrt_bl]['start_time'])
-                    
-                    if seg_ind<nb_segment-1:
+
+                    if seg_ind < nb_segment - 1:
                         last_bl = gaps_block_ind[seg_ind]
                     else:
                         last_bl = data_blocks.size - 1
-                    
+
                     self._sig_t_stops[chan_id].append(data_blocks[last_bl]['end_time'])
-                    
-                    in_seg_data_block = data_blocks[fisrt_bl:last_bl+1]
+
+                    in_seg_data_block = data_blocks[fisrt_bl:last_bl + 1]
                     in_seg_data_block['cumsum'][1:] = np.cumsum(in_seg_data_block['size'][:-1])
                     self._by_seg_data_blocks[chan_id].append(in_seg_data_block)
-            
+
             self._seg_t_starts = []
             self._seg_t_stops = []
             for seg_ind in range(nb_segment):
                 # there is a small delay between all channel so take the max/min for t_start/t_stop
-                t_start = min(self._sig_t_starts[chan_id][seg_ind] for chan_id in self._sig_t_starts)
+                t_start = min(
+                    self._sig_t_starts[chan_id][seg_ind] for chan_id in self._sig_t_starts)
                 t_stop = max(self._sig_t_stops[chan_id][seg_ind] for chan_id in self._sig_t_stops)
                 self._seg_t_starts.append(t_start)
                 self._seg_t_stops.append(t_stop)
-        
+
         # create typed channels
         sig_channels = []
         unit_channels = []
@@ -194,12 +196,7 @@ class Spike2RawIO(BaseRawIO):
                 if self.take_ideal_sampling_rate:
                     sampling_rate = info['ideal_rate']
                 else:
-                    if info['system_id'] in [1, 2, 3, 4, 5]:  # Before version 5
-                        sample_interval = (chan_info['divide'] * info['us_per_time'] *
-                                           info['time_per_adc']) * 1e-6
-                    else:
-                        sample_interval = (chan_info['l_chan_dvd'] *
-                                           info['us_per_time'] * info['dtime_base'])
+                    sample_interval = get_sample_interval(info, chan_info)
                     sampling_rate = (1. / sample_interval)
 
             name = chan_info['title']
@@ -258,18 +255,18 @@ class Spike2RawIO(BaseRawIO):
                     _id = "ch{}#{}".format(chan_id, unit_id)
                     unit_channels.append((name, _id, wf_units, wf_gain, wf_offset,
                                           wf_left_sweep, wf_sampling_rate))
-        
+
         sig_channels = np.array(sig_channels, dtype=_signal_channel_dtype)
         unit_channels = np.array(unit_channels, dtype=_unit_channel_dtype)
         event_channels = np.array(event_channels, dtype=_event_channel_dtype)
-        
+
         if len(sig_channels) > 0:
             # signal channel can different sampling_rate/dtype/t_start/signal_length...
             # grouping them is difficults, so each channe = one group
-            
+
             sig_channels['group_id'] = np.arange(sig_channels.size)
             self._sig_dtypes = {s['group_id']: np.dtype(s['dtype']) for s in sig_channels}
-            
+
         # fille into header dict
         self.header = {}
         self.header['nb_block'] = 1
@@ -312,24 +309,31 @@ class Spike2RawIO(BaseRawIO):
     def _segment_t_stop(self, block_index, seg_index):
         return self._seg_t_stops[seg_index] * self._time_factor
 
-    def _get_signal_size(self, block_index, seg_index, channel_indexes):
+    def _check_channel_indexes(self, channel_indexes):
+        if channel_indexes is None:
+            channel_indexes = slice(None)
+        channel_indexes = np.arange(self.header['signal_channels'].size)[channel_indexes]
         assert len(channel_indexes) == 1
+        return channel_indexes
+
+    def _get_signal_size(self, block_index, seg_index, channel_indexes):
+        channel_indexes = self._check_channel_indexes(channel_indexes)
         chan_id = self.header['signal_channels'][channel_indexes[0]]['id']
         sig_size = np.sum(self._by_seg_data_blocks[chan_id][seg_index]['size'])
         return sig_size
 
     def _get_signal_t_start(self, block_index, seg_index, channel_indexes):
-        assert len(channel_indexes) == 1
+        channel_indexes = self._check_channel_indexes(channel_indexes)
         chan_id = self.header['signal_channels'][channel_indexes[0]]['id']
         return self._sig_t_starts[chan_id][seg_index] * self._time_factor
 
-    def _get_analogsignal_chunk(self, block_index, seg_index,  i_start, i_stop, channel_indexes):
+    def _get_analogsignal_chunk(self, block_index, seg_index, i_start, i_stop, channel_indexes):
         if i_start is None:
             i_start = 0
         if i_stop is None:
             i_stop = self._get_signal_size(block_index, seg_index, channel_indexes)
 
-        assert len(channel_indexes) == 1
+        channel_indexes = self._check_channel_indexes(channel_indexes)
         chan_index = channel_indexes[0]
         chan_id = self.header['signal_channels'][chan_index]['id']
         group_id = self.header['signal_channels'][channel_indexes[0]]['group_id']
@@ -349,7 +353,7 @@ class Spike2RawIO(BaseRawIO):
             bl0 = np.searchsorted(data_blocks['cumsum'], i_start, side='left')
             bl1 = np.searchsorted(data_blocks['cumsum'], i_stop, side='left')
             ind = 0
-            for bl in range(bl0,  bl1):
+            for bl in range(bl0, bl1):
                 ind0 = data_blocks[bl]['pos']
                 ind1 = data_blocks[bl]['size'] * dt.itemsize + ind0
                 data = self._memmap[ind0:ind1].view(dt)
@@ -357,7 +361,7 @@ class Spike2RawIO(BaseRawIO):
                     # right border
                     # be carfull that bl could be both bl0 and bl1!!
                     border = data.size - (i_stop - data_blocks[bl]['cumsum'])
-                    if border>0:
+                    if border > 0:
                         data = data[:-border]
                 if bl == bl0:
                     # left border
@@ -366,7 +370,7 @@ class Spike2RawIO(BaseRawIO):
                 raw_signals[ind:data.size + ind, c] = data
                 ind += data.size
         return raw_signals
-    
+
     def _count_in_time_slice(self, seg_index, chan_id, lim0, lim1, marker_filter=None):
         # count event or spike in time slice
         data_blocks = self._all_data_blocks[chan_id]
@@ -386,9 +390,9 @@ class Spike2RawIO(BaseRawIO):
             if ts[-1] > lim1:
                 break
         return nb
-    
-    def _get_internal_timestamp_(self, seg_index, chan_id, 
-                                t_start, t_stop, other_field=None, marker_filter=None):
+
+    def _get_internal_timestamp_(self, seg_index, chan_id,
+                                 t_start, t_stop, other_field=None, marker_filter=None):
         chan_info = self._channel_infos[chan_id]
         # data_blocks = self._by_seg_data_blocks[chan_id][seg_index]
         data_blocks = self._all_data_blocks[chan_id]
@@ -438,18 +442,18 @@ class Spike2RawIO(BaseRawIO):
                 othervalues = np.zeros(0, dtype=dt.fields[other_field][0])
             return timestamps, othervalues
 
-    def _spike_count(self,  block_index, seg_index, unit_index):
+    def _spike_count(self, block_index, seg_index, unit_index):
         chan_id, unit_id = self.internal_unit_ids[unit_index]
         if self.ced_units:
             marker_filter = unit_id
         else:
-            marker_filter = None        
+            marker_filter = None
         lim0 = self._seg_t_starts[seg_index]
         lim1 = self._seg_t_stops[seg_index]
         return self._count_in_time_slice(seg_index, chan_id,
-                                        lim0, lim1, marker_filter=marker_filter)
+                                         lim0, lim1, marker_filter=marker_filter)
 
-    def _get_spike_timestamps(self,  block_index, seg_index, unit_index, t_start, t_stop):
+    def _get_spike_timestamps(self, block_index, seg_index, unit_index, t_start, t_stop):
         unit_header = self.header['unit_channels'][unit_index]
         chan_id, unit_id = self.internal_unit_ids[unit_index]
 
@@ -459,7 +463,8 @@ class Spike2RawIO(BaseRawIO):
             marker_filter = None
 
         spike_timestamps = self._get_internal_timestamp_(seg_index,
-            chan_id, t_start, t_stop, marker_filter=marker_filter)
+                                                         chan_id, t_start, t_stop,
+                                                         marker_filter=marker_filter)
 
         return spike_timestamps
 
@@ -477,8 +482,10 @@ class Spike2RawIO(BaseRawIO):
         else:
             marker_filter = None
 
-        timestamps, waveforms = self._get_internal_timestamp_(seg_index, chan_id, 
-                                        t_start, t_stop, other_field='waveform', marker_filter=marker_filter)
+        timestamps, waveforms = self._get_internal_timestamp_(seg_index, chan_id,
+                                                              t_start, t_stop,
+                                                              other_field='waveform',
+                                                              marker_filter=marker_filter)
 
         waveforms = waveforms.reshape(timestamps.size, 1, -1)
 
@@ -491,20 +498,22 @@ class Spike2RawIO(BaseRawIO):
         lim1 = self._seg_t_stops[seg_index]
         return self._count_in_time_slice(seg_index, chan_id, lim0, lim1, marker_filter=None)
 
-    def _get_event_timestamps(self,  block_index, seg_index, event_channel_index, t_start, t_stop):
+    def _get_event_timestamps(self, block_index, seg_index, event_channel_index, t_start, t_stop):
         event_header = self.header['event_channels'][event_channel_index]
         chan_id = int(event_header['id'])  # because set to string in header
         chan_info = self._channel_infos[chan_id]
 
         if chan_info['kind'] == 5:
             timestamps, labels = self._get_internal_timestamp_(seg_index,
-                chan_id, t_start, t_stop, other_field='marker')
+                                                               chan_id, t_start, t_stop,
+                                                               other_field='marker')
         elif chan_info['kind'] == 8:
             timestamps, labels = self._get_internal_timestamp_(seg_index,
-                chan_id, t_start, t_stop, other_field='label')
+                                                               chan_id, t_start, t_stop,
+                                                               other_field='label')
         else:
             timestamps = self._get_internal_timestamp_(seg_index,
-                                    chan_id, t_start, t_stop, other_field=None)
+                                                       chan_id, t_start, t_stop, other_field=None)
             labels = np.zeros(timestamps.size, dtype='U')
 
         labels = labels.astype('U')
@@ -565,6 +574,19 @@ def get_channel_dtype(chan_info):
         dt = 'float32'
     dt = np.dtype(dt)
     return dt
+
+
+def get_sample_interval(info, chan_info):
+    """
+    Get sample interval for one channel
+    """
+    if info['system_id'] in [1, 2, 3, 4, 5]:  # Before version 5
+        sample_interval = (chan_info['divide'] * info['us_per_time'] *
+                           info['time_per_adc']) * 1e-6
+    else:
+        sample_interval = (chan_info['l_chan_dvd'] *
+                           info['us_per_time'] * info['dtime_base'])
+    return sample_interval
 
 
 # headers structures :

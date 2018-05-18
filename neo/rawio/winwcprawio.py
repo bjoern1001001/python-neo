@@ -35,6 +35,10 @@ class WinWcpRawIO(BaseRawIO):
     def _parse_header(self):
         SECTORSIZE = 512
 
+        # only one memmap for all segment to avoid
+        # "error: [Errno 24] Too many open files"
+        self._memmap = np.memmap(self.filename, dtype='uint8', mode='r')
+
         with open(self.filename, 'rb') as fid:
 
             headertext = fid.read(1024)
@@ -57,7 +61,6 @@ class WinWcpRawIO(BaseRawIO):
             all_sampling_interval = []
             # loop for record number
             for seg_index in range(header['NR']):
-                # print 'record ',i
                 offset = 1024 + seg_index * (SECTORSIZE * header['NBD'] + 1024)
 
                 # read analysis zone
@@ -67,10 +70,11 @@ class WinWcpRawIO(BaseRawIO):
                 NP = (SECTORSIZE * header['NBD']) // 2
                 NP = NP - NP % header['NC']
                 NP = NP // header['NC']
-
-                self._raw_signals[seg_index] = np.memmap(self.filename, dtype='int16', mode='r',
-                                                         shape=(NP, header['NC'], ),
-                                                         offset=offset + header['NBA'] * SECTORSIZE)
+                NC = header['NC']
+                ind0 = offset + header['NBA'] * SECTORSIZE
+                ind1 = ind0 + NP * NC * 2
+                sigs = self._memmap[ind0:ind1].view('int16').reshape(NP, NC)
+                self._raw_signals[seg_index] = sigs
 
                 all_sampling_interval.append(analysisHeader['SamplingInterval'])
 
@@ -127,14 +131,14 @@ class WinWcpRawIO(BaseRawIO):
     def _get_signal_t_start(self, block_index, seg_index, channel_indexes):
         return 0.
 
-    def _get_analogsignal_chunk(self, block_index, seg_index,  i_start, i_stop, channel_indexes):
+    def _get_analogsignal_chunk(self, block_index, seg_index, i_start, i_stop, channel_indexes):
         # WARNING check if id or index for signals (in the old IO it was ids
-        #~ raw_signals = self._raw_signals[seg_index][slice(i_start, i_stop), channel_indexes]
+        # ~ raw_signals = self._raw_signals[seg_index][slice(i_start, i_stop), channel_indexes]
         if channel_indexes is None:
             channel_indexes = np.arange(self.header['signal_channels'].size)
 
-        l = self.header['signal_channels']['id'].tolist()
-        channel_ids = [l.index(c) for c in channel_indexes]
+        ids = self.header['signal_channels']['id'].tolist()
+        channel_ids = [ids.index(c) for c in channel_indexes]
         raw_signals = self._raw_signals[seg_index][slice(i_start, i_stop), channel_ids]
         return raw_signals
 

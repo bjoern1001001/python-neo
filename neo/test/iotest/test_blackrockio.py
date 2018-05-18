@@ -208,8 +208,8 @@ class CommonTests(BaseTestIO, unittest.TestCase):
         # Assert IOError is raised when no Blackrock files are available
         with self.assertRaises(IOError):
             reader2 = BlackrockIO(filename='nonexistent')
-        with self.assertRaises(IOError):
-            reader2 = BlackrockIO(filename=filename, nev_override='nonexistent')
+        # with self.assertRaises(IOError):
+        #     reader2 = BlackrockIO(filename=filename, nev_override='nonexistent')
 
         # Load data to maximum extent, one None is not given as list
         block = reader.read_block(load_waveforms=False)
@@ -335,7 +335,7 @@ class CommonTests(BaseTestIO, unittest.TestCase):
                     np.logical_and(elec_ml == channelid, unit_ml == unitid))]
                 # Going sure that unit is really seconds and not 1/30000 seconds
                 if (not st_i.units == pq.CompoundUnit("1.0/{0} * s".format(30000))) and \
-                        st_i.units == pq.s:
+                                st_i.units == pq.s:
                     st_i = np.round(st_i.base * 30000).astype(int)
                 assert_equal(st_i, matlab_spikes)
 
