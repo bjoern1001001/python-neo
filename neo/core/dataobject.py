@@ -12,8 +12,6 @@ import quantities as pq
 import numpy as np
 from neo.core.baseneo import BaseNeo, _check_annotations
 
-# TODO: If yes, then should array annotations as a whole also be a property?
-
 
 def _normalize_array_annotations(value, length):
 
