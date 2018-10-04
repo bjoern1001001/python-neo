@@ -133,7 +133,7 @@ class Epoch(DataObject):
         works
         '''
         return _new_epoch, (self.__class__, self.times, self.durations, self.labels, self.units,
-                            self.name, self.file_origin, self.description, self.array_annotations,
+                            self.name, self.file_origin, self.description, self._array_annotations,
                             self.annotations, self.segment)
 
     def __array_finalize__(self, obj):
@@ -147,7 +147,7 @@ class Epoch(DataObject):
         # but do not overwrite existing ones from slicing etc.
         # This ensures the attribute exists
         if not hasattr(self, 'array_annotations'):
-            self.array_annotations = ArrayDict(self._get_arr_ann_length())
+            self._array_annotations = ArrayDict(self._get_arr_ann_length())
 
     def __repr__(self):
         '''
@@ -292,7 +292,7 @@ class Epoch(DataObject):
         self.array_annotate(labels=labels)
 
     def get_labels(self):
-        return self.array_annotations['labels']
+        return self._array_annotations['labels']
 
     labels = property(get_labels, set_labels)
 
@@ -300,6 +300,6 @@ class Epoch(DataObject):
         self.array_annotate(durations=durations)
 
     def get_durations(self):
-        return self.array_annotations['durations']
+        return self._array_annotations['durations']
 
     durations = property(get_durations, set_durations)

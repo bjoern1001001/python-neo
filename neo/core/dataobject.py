@@ -153,8 +153,8 @@ class DataObject(BaseNeo, pq.Quantity):
         and attributes are processed.
         """
 
-        if not hasattr(self, 'array_annotations') or not self.array_annotations:
-            self.array_annotations = ArrayDict(self._get_arr_ann_length())
+        if not hasattr(self, 'array_annotations') or not self._array_annotations:
+            self._array_annotations = ArrayDict(self._get_arr_ann_length())
         if array_annotations is not None:
             self.array_annotate(**array_annotations)
 
@@ -173,7 +173,7 @@ class DataObject(BaseNeo, pq.Quantity):
         'b'
         """
 
-        self.array_annotations.update(array_annotations)
+        self._array_annotations.update(array_annotations)
 
     def array_annotations_at_index(self, index):
 
@@ -196,15 +196,15 @@ class DataObject(BaseNeo, pq.Quantity):
 
         # Use what is given as an index to determine the corresponding annotations,
         # if not possible, numpy raises an Error
-        for ann in self.array_annotations.keys():
+        for ann in self._array_annotations.keys():
             # NO deepcopy, because someone might want to alter the actual object using this
             try:
-                index_annotations[ann] = self.array_annotations[ann][index]
+                index_annotations[ann] = self._array_annotations[ann][index]
             except IndexError as e:
                 # IndexError caused by 'dummy' array annotations should not result in failure
                 # Taking a slice from nothing results in nothing
-                if len(self.array_annotations[ann]) == 0 and not self._get_arr_ann_length() == 0:
-                    index_annotations[ann] = self.array_annotations[ann]
+                if len(self._array_annotations[ann]) == 0 and not self._get_arr_ann_length() == 0:
+                    index_annotations[ann] = self._array_annotations[ann]
                 else:
                     raise e
 
@@ -224,9 +224,9 @@ class DataObject(BaseNeo, pq.Quantity):
         merged_array_annotations = {}
         omitted_keys_self = []
         # Concatenating arrays for each key
-        for key in self.array_annotations:
+        for key in self._array_annotations:
             try:
-                value = copy.deepcopy(self.array_annotations[key])
+                value = copy.deepcopy(self._array_annotations[key])
                 other_value = copy.deepcopy(other.array_annotations[key])
                 # Quantities need to be rescaled to common unit
                 if isinstance(value, pq.Quantity):
@@ -245,7 +245,7 @@ class DataObject(BaseNeo, pq.Quantity):
                 continue
         # Also save omitted keys from 'other'
         omitted_keys_other = [key for key in other.array_annotations
-                              if key not in self.array_annotations]
+                              if key not in self._array_annotations]
         # Warn if keys were omitted
         if omitted_keys_other or omitted_keys_self:
             warnings.warn("The following array annotations were omitted, because they were only "
@@ -276,7 +276,7 @@ class DataObject(BaseNeo, pq.Quantity):
                                            units=units)
 
         # Expected behavior is deepcopy, so deepcopying array_annotations
-        obj.array_annotations = copy.deepcopy(self.array_annotations)
+        obj.array_annotations = copy.deepcopy(self._array_annotations)
 
         obj.segment = self.segment
 
@@ -290,7 +290,7 @@ class DataObject(BaseNeo, pq.Quantity):
         '''
 
         obj = super(DataObject, self).copy(**kwargs)
-        obj.array_annotations = self.array_annotations
+        obj.array_annotations = self._array_annotations
         return obj
 
     def as_array(self, units=None):
@@ -326,6 +326,16 @@ class DataObject(BaseNeo, pq.Quantity):
         except IndexError:
             length = 1
         return length
+
+    def get_array_ann(self):
+        return self._array_annotations
+
+    def set_array_ann(self, obj):
+        if not isinstance(obj, ArrayDict):
+            obj = ArrayDict(self._get_arr_ann_length(), _normalize_array_annotations, obj)
+        self._array_annotations = obj
+
+    array_annotations = property(get_array_ann, set_array_ann)
 
 
 class ArrayDict(dict):

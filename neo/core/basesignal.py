@@ -74,7 +74,7 @@ class BaseSignal(DataObject):
         # but do not overwrite existing ones from slicing etc.
         # This ensures the attribute exists
         if not hasattr(self, 'array_annotations'):
-            self.array_annotations = ArrayDict(self._get_arr_ann_length())
+            self._array_annotations = ArrayDict(self._get_arr_ann_length())
 
         # Globally recommended attributes
         self.name = getattr(obj, 'name', None)
@@ -133,7 +133,7 @@ class BaseSignal(DataObject):
         new_signal._copy_data_complement(self)
         # _copy_data_complement can't always copy array annotations,
         # so this needs to be done locally
-        new_signal.array_annotations = copy.deepcopy(self.array_annotations)
+        new_signal.array_annotations = copy.deepcopy(self._array_annotations)
         return new_signal
 
     def _get_required_attributes(self, signal, units):

@@ -357,7 +357,7 @@ class SpikeTrain(DataObject):
                                  self.sampling_rate, self.t_start,
                                  self.waveforms, self.left_sweep,
                                  self.name, self.file_origin, self.description,
-                                 self.array_annotations, self.annotations,
+                                 self._array_annotations, self.annotations,
                                  self.segment, self.unit)
 
     def __array_finalize__(self, obj):
@@ -401,7 +401,7 @@ class SpikeTrain(DataObject):
         # but do not overwrite existing ones from slicing etc.
         # This ensures the attribute exists
         if not hasattr(self, 'array_annotations'):
-            self.array_annotations = ArrayDict(self._get_arr_ann_length())
+            self._array_annotations = ArrayDict(self._get_arr_ann_length())
 
         # Note: Array annotations have to be changed when slicing or initializing an object,
         # copying them over in spite of changed data would result in unexpected behaviour
@@ -478,7 +478,7 @@ class SpikeTrain(DataObject):
                           left_sweep=self.left_sweep, name=self.name,
                           file_origin=self.file_origin,
                           description=self.description,
-                          array_annotations=copy.deepcopy(self.array_annotations),
+                          array_annotations=copy.deepcopy(self._array_annotations),
                           **self.annotations)
 
     def __sub__(self, time):
@@ -498,7 +498,7 @@ class SpikeTrain(DataObject):
                           left_sweep=self.left_sweep, name=self.name,
                           file_origin=self.file_origin,
                           description=self.description,
-                          array_annotations=copy.deepcopy(self.array_annotations),
+                          array_annotations=copy.deepcopy(self._array_annotations),
                           **self.annotations)
 
     def __getitem__(self, i):
@@ -691,10 +691,10 @@ class SpikeTrain(DataObject):
 
         omitted_keys_self = []
 
-        keys = self.array_annotations.keys()
+        keys = self._array_annotations.keys()
         for key in keys:
             try:
-                self_ann = copy.deepcopy(self.array_annotations[key])
+                self_ann = copy.deepcopy(self._array_annotations[key])
                 other_ann = copy.deepcopy(other.array_annotations[key])
                 if isinstance(self_ann, pq.Quantity):
                     other_ann.rescale(self_ann.units)
@@ -709,7 +709,7 @@ class SpikeTrain(DataObject):
                 continue
 
         omitted_keys_other = [key for key in other.array_annotations
-                              if key not in self.array_annotations]
+                              if key not in self._array_annotations]
 
         if omitted_keys_self or omitted_keys_other:
             warnings.warn("The following array annotations were omitted, because they were only "

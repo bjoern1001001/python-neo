@@ -216,7 +216,7 @@ class AnalogSignal(BaseSignal):
         return _new_AnalogSignalArray, (self.__class__, np.array(self), self.units, self.dtype,
                                         True, self.t_start, self.sampling_rate,
                                         self.sampling_period, self.name, self.file_origin,
-                                        self.description, self.array_annotations,
+                                        self.description, self._array_annotations,
                                         self.annotations, self.channel_index, self.segment)
 
     def _array_finalize_spec(self, obj):
@@ -297,7 +297,7 @@ class AnalogSignal(BaseSignal):
             obj = super(AnalogSignal, self).__getitem__(i)
             if i.start:
                 obj.t_start = self.t_start + i.start * self.sampling_period
-            obj.array_annotations = deepcopy(self.array_annotations)
+            obj.array_annotations = deepcopy(self._array_annotations)
         elif isinstance(i, np.ndarray):
             # Indexing of an AnalogSignal is only consistent if the resulting number of
             # samples is the same for each trace. The time axis for these samples is not
@@ -498,7 +498,7 @@ class AnalogSignal(BaseSignal):
         # In this case, array_annotations need to stay available
         # super.__getitem__ cannot do this, so it needs to be done here
         if len(obj) > 0:
-            obj.array_annotations = self.array_annotations
+            obj.array_annotations = self._array_annotations
 
         obj.t_start = self.t_start + i * self.sampling_period
 
